@@ -59,16 +59,18 @@ namespace blok {
 			float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 			startTime = std::chrono::high_resolution_clock::now();
 
+			//fix the player y position so player doesn't move toward y when looking up or down. Lock player in y plane until y is moved.
+			glm::vec3 player;
+			player.x = cos(glm::radians(yaw));
+			player.y = 1.0f;
+			player.z = sin(glm::radians(yaw));
+
 			glm::vec3 front;
-			front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+			front.x = player.x * cos(glm::radians(pitch));
 			front.y = sin(glm::radians(pitch));
-			front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+			front.z = player.z * cos(glm::radians(pitch));
 			cameraFront = glm::normalize(front);
-			//playerFront 
-			playerFront.x = cos(glm::radians(yaw));
-			playerFront.y = 1.0f;
-			playerFront.z = sin(glm::radians(yaw));
-			playerFront = glm::normalize(playerFront);
+			playerFront = glm::normalize(player);
 			//std::cout << glm::to_string(cameraFront) << std::endl;
 
 			float previousY = cameraPos.y;
