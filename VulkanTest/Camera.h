@@ -41,7 +41,7 @@ namespace blok {
 			direction.x = x;
 			direction.y = y;
 			direction.z = z;
-			std::cout << "direction " << glm::to_string(direction) << std::endl;
+			//std::cout << "direction " << glm::to_string(direction) << std::endl;
 		}
 
 	private:
@@ -60,11 +60,13 @@ namespace blok {
 			startTime = std::chrono::high_resolution_clock::now();
 
 			//fix the player y position so player doesn't move toward y when looking up or down. Lock player in y plane until y is moved.
+			//this is used for camera motion
 			glm::vec3 player;
 			player.x = cos(glm::radians(yaw));
 			player.y = 1.0f;
 			player.z = sin(glm::radians(yaw));
 
+			//this is used for camera target
 			glm::vec3 front;
 			front.x = player.x * cos(glm::radians(pitch));
 			front.y = sin(glm::radians(pitch));
