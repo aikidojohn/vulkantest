@@ -17,7 +17,7 @@ namespace blok {
 	class Camera {
 	public:
 		float Zoom = 45.0f;
-		float Speed = 1.5f;
+		float Speed = 2.5f;
 		float Sensitivity = 0.05f;
 		
 		
