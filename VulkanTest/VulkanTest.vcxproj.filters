@@ -26,5 +26,11 @@
     <ClInclude Include="Texture.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Model.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsContext.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

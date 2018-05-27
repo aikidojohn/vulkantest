@@ -26,6 +26,11 @@ namespace blok {
 			return glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 		}
 
+		glm::mat4 getSkyboxModelView() {
+			//updateCamera();
+			return glm::lookAt(cameraPosSkybox, cameraPosSkybox + cameraFront, cameraUp);
+		}
+
 		void onMouseMove(float xOffset, float yOffset) {
 			yaw += xOffset * Sensitivity;
 			pitch = glm::clamp((pitch + yOffset * Sensitivity), -89.0f, 89.0f);
@@ -45,6 +50,7 @@ namespace blok {
 		}
 
 	private:
+		glm::vec3 cameraPosSkybox = glm::vec3(0.0f, 1.0f, 2.0f);
 		glm::vec3 cameraPos = glm::vec3(0.0f, 1.0f, 2.0f);
 		glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 		glm::vec3 playerFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -82,6 +88,15 @@ namespace blok {
 			cameraPos += glm::normalize(glm::cross(playerFront, cameraUp)) * (Speed * timeDelta * direction.x);
 			//movement in the y plane. Simply add the delta y to the y component.
 			cameraPos.y = previousY + (Speed * timeDelta * direction.y);
+
+			//skybox - I'm sure there's a better way to do this
+			/*previousY = cameraPosSkybox.y;
+			//movenent in the z plane
+			cameraPosSkybox += playerFront;
+			//movement in the x plane. cross creates a perpendicular vector to up and front
+			cameraPosSkybox += glm::normalize(glm::cross(playerFront, cameraUp));
+			//movement in the y plane. Simply add the delta y to the y component.
+			cameraPosSkybox.y = previousY;*/
 		}
 	};
 
