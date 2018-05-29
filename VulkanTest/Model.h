@@ -13,6 +13,15 @@ namespace blok {
 	private:
 		std::vector<Vert> vertices;
 		std::vector<uint32_t> indices;
+
+	public:
+		void add(Vert v) {
+			vertices.push_back(v);
+		}
+
+		void addIndex(uint32_t i) {
+			indices.push_back(i);
+		}
 	};
 };
 #endif // !blok_model_h

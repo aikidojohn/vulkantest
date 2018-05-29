@@ -88,6 +88,7 @@ namespace blok {
 			vkDestroyInstance(instance, nullptr);
 		}
 
+
 	private:
 		VkDebugReportCallbackEXT callback;
 		const std::vector<const char*> validationLayers;

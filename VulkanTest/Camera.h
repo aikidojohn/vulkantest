@@ -27,7 +27,6 @@ namespace blok {
 		}
 
 		glm::mat4 getSkyboxModelView() {
-			//updateCamera();
 			return glm::lookAt(cameraPosSkybox, cameraPosSkybox + cameraFront, cameraUp);
 		}
 
@@ -88,15 +87,6 @@ namespace blok {
 			cameraPos += glm::normalize(glm::cross(playerFront, cameraUp)) * (Speed * timeDelta * direction.x);
 			//movement in the y plane. Simply add the delta y to the y component.
 			cameraPos.y = previousY + (Speed * timeDelta * direction.y);
-
-			//skybox - I'm sure there's a better way to do this
-			/*previousY = cameraPosSkybox.y;
-			//movenent in the z plane
-			cameraPosSkybox += playerFront;
-			//movement in the x plane. cross creates a perpendicular vector to up and front
-			cameraPosSkybox += glm::normalize(glm::cross(playerFront, cameraUp));
-			//movement in the y plane. Simply add the delta y to the y component.
-			cameraPosSkybox.y = previousY;*/
 		}
 	};
 
