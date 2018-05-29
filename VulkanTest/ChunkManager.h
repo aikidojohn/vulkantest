@@ -79,6 +79,15 @@ namespace blok {
 					mBlocks[i][j] = new Block[CHUNK_SIZE];
 				}
 			}
+			//carve a hole for testing face culling
+			for (int x = 3; x < 7; x++) {
+				for (int z = 0; z < 6; z++) {
+					mBlocks[x][4][z].setActive(false);
+					mBlocks[x][5][z].setActive(false);
+					mBlocks[x+1][4][z].setActive(false);
+					mBlocks[x+1][5][z].setActive(false);
+				}
+			}
 		}
 
 		~Chunk() {
@@ -100,7 +109,31 @@ namespace blok {
 				for (int y = 0; y < CHUNK_SIZE; y++) {
 					for (int z = 0; z < CHUNK_SIZE; z++) {
 						if (mBlocks[x][y][z].isActive()) {
-							renderBlock(x * -cubeSize + xOffset, y * -cubeSize + yOffset, z * -cubeSize, rand() % 2, cubeSize);
+							bool renderLeft = true;
+							if (x < CHUNK_SIZE - 1)
+								renderLeft = !mBlocks[x+1][y][z].isActive();
+
+							bool renderRight = true;
+							if (x > 0)
+								renderRight = !mBlocks[x-1][y][z].isActive();
+
+							bool renderFront = true; 
+							if (z > 0)
+								renderFront = !mBlocks[x][y][z-1].isActive();
+
+							bool renderBack = true;
+							if (z < CHUNK_SIZE - 1)
+								renderBack = !mBlocks[x][y][z+1].isActive();
+
+							bool renderTop = true;
+							if (y > 0)
+								renderTop = !mBlocks[x][y-1][z].isActive();
+
+							bool renderBottom= true;
+							if (y < CHUNK_SIZE - 1)
+								renderBottom = !mBlocks[x][y+1][z].isActive();
+
+							renderBlock(x * -cubeSize + xOffset, y * -cubeSize + yOffset, z * -cubeSize, rand() % 2, cubeSize, renderLeft, renderFront, renderRight, renderBack, renderTop, renderBottom);
 						}
 					}
 				}
@@ -110,59 +143,71 @@ namespace blok {
 	private:
 		Block * ** mBlocks;
 
-		void renderBlock(float x, float y, float z, float textureIndex, float w) {
+		void renderBlock(float x, float y, float z, float textureIndex, float w, bool renderLeft, bool renderFront, bool renderRight, bool renderBack, bool renderTop, bool renderBottom) {
 			float x0 = x;
 			float y0 = y;
 			float x1 = x + w;
 			float y1 = y + w;
 			uint32_t v0, v1, v2, v3;
 			//Front;
-			v0 = mesh.addVertex({ { x0, y0, z },{ 2.0f, 1.0f, textureIndex } });
-			v1 = mesh.addVertex({ { x1, y0, z },{ 1.0f, 1.0f, textureIndex } });
-			v2 = mesh.addVertex({ { x1, y1, z },{ 1.0f, 0.0f, textureIndex } });
-			v3 = mesh.addVertex({ { x0, y1, z },{ 2.0f, 0.0f, textureIndex } });
-			mesh.addTriangle(v0, v1, v2);
-			mesh.addTriangle(v2, v3, v0);
+			if (renderFront) {
+				v0 = mesh.addVertex({ { x0, y0, z },{ 2.0f, 1.0f, textureIndex } });
+				v1 = mesh.addVertex({ { x1, y0, z },{ 1.0f, 1.0f, textureIndex } });
+				v2 = mesh.addVertex({ { x1, y1, z },{ 1.0f, 0.0f, textureIndex } });
+				v3 = mesh.addVertex({ { x0, y1, z },{ 2.0f, 0.0f, textureIndex } });
+				mesh.addTriangle(v0, v1, v2);
+				mesh.addTriangle(v2, v3, v0);
+			}
 
 			//Back
-			v0 = mesh.addVertex({ { x0, y0, z - w },{ 1.0f, 1.0f, textureIndex } });
-			v1 = mesh.addVertex({ { x0, y1, z - w },{ 1.0f, 0.0f, textureIndex } });
-			v2 = mesh.addVertex({ { x1, y1, z - w },{ 0.0f, 0.0f, textureIndex } });
-			v3 = mesh.addVertex({ { x1, y0, z - w },{ 0.0f, 1.0f, textureIndex } });
-			mesh.addTriangle(v0, v1, v2);
-			mesh.addTriangle(v2, v3, v0);
+			if (renderBack) {
+				v0 = mesh.addVertex({ { x0, y0, z - w },{ 1.0f, 1.0f, textureIndex } });
+				v1 = mesh.addVertex({ { x0, y1, z - w },{ 1.0f, 0.0f, textureIndex } });
+				v2 = mesh.addVertex({ { x1, y1, z - w },{ 0.0f, 0.0f, textureIndex } });
+				v3 = mesh.addVertex({ { x1, y0, z - w },{ 0.0f, 1.0f, textureIndex } });
+				mesh.addTriangle(v0, v1, v2);
+				mesh.addTriangle(v2, v3, v0);
+			}
 
 			//Top
-			v0 = mesh.addVertex({ { x0, y1, z },{ 2.0f, 1.0f, textureIndex } });
-			v1 = mesh.addVertex({ { x1, y1, z },{ 1.0f, 1.0f, textureIndex } });
-			v2 = mesh.addVertex({ { x1, y1, z - w },{ 1.0f, 0.0f, textureIndex } });
-			v3 = mesh.addVertex({ { x0, y1, z - w },{ 2.0f, 0.0f, textureIndex } });
-			mesh.addTriangle(v0, v1, v2);
-			mesh.addTriangle(v2, v3, v0);
+			if (renderTop) {
+				v0 = mesh.addVertex({ { x0, y1, z },{ 2.0f, 1.0f, textureIndex } });
+				v1 = mesh.addVertex({ { x1, y1, z },{ 1.0f, 1.0f, textureIndex } });
+				v2 = mesh.addVertex({ { x1, y1, z - w },{ 1.0f, 0.0f, textureIndex } });
+				v3 = mesh.addVertex({ { x0, y1, z - w },{ 2.0f, 0.0f, textureIndex } });
+				mesh.addTriangle(v0, v1, v2);
+				mesh.addTriangle(v2, v3, v0);
+			}
 
 			//Bottom
-			v0 = mesh.addVertex({ { x1, y0, z },{ 1.0f, 0.0f, textureIndex } });
-			v1 = mesh.addVertex({ { x0, y0, z },{ 2.0f, 0.0f, textureIndex } });
-			v2 = mesh.addVertex({ { x0, y0, z - w },{ 2.0f, 1.0f, textureIndex } });
-			v3 = mesh.addVertex({ { x1, y0, z - w },{ 1.0f, 1.0f, textureIndex } });
-			mesh.addTriangle(v0, v1, v2);
-			mesh.addTriangle(v2, v3, v0);
+			if (renderBottom) {
+				v0 = mesh.addVertex({ { x1, y0, z },{ 1.0f, 0.0f, textureIndex } });
+				v1 = mesh.addVertex({ { x0, y0, z },{ 2.0f, 0.0f, textureIndex } });
+				v2 = mesh.addVertex({ { x0, y0, z - w },{ 2.0f, 1.0f, textureIndex } });
+				v3 = mesh.addVertex({ { x1, y0, z - w },{ 1.0f, 1.0f, textureIndex } });
+				mesh.addTriangle(v0, v1, v2);
+				mesh.addTriangle(v2, v3, v0);
+			}
 
 			//Left
-			v0 = mesh.addVertex({ { x0, y0, z },{ 1.0f, 1.0f, textureIndex } });
-			v1 = mesh.addVertex({ { x0, y1, z },{ 1.0f, 0.0f, textureIndex } });
-			v2 = mesh.addVertex({ { x0, y1, z - w },{ 0.0f, 0.0f, textureIndex } });
-			v3 = mesh.addVertex({ { x0, y0, z - w },{ 0.0f, 1.0f, textureIndex } });
-			mesh.addTriangle(v0, v1, v2);
-			mesh.addTriangle(v2, v3, v0);
+			if (renderLeft) {
+				v0 = mesh.addVertex({ { x0, y0, z },{ 1.0f, 1.0f, textureIndex } });
+				v1 = mesh.addVertex({ { x0, y1, z },{ 1.0f, 0.0f, textureIndex } });
+				v2 = mesh.addVertex({ { x0, y1, z - w },{ 0.0f, 0.0f, textureIndex } });
+				v3 = mesh.addVertex({ { x0, y0, z - w },{ 0.0f, 1.0f, textureIndex } });
+				mesh.addTriangle(v0, v1, v2);
+				mesh.addTriangle(v2, v3, v0);
+			}
 
 			//Right
-			v0 = mesh.addVertex({ { x1, y1, z },{ 2.0f, 0.0f, textureIndex } });
-			v1 = mesh.addVertex({ { x1, y0, z },{ 2.0f, 1.0f, textureIndex } });
-			v2 = mesh.addVertex({ { x1, y0, z - w },{ 1.0f, 1.0f, textureIndex } });
-			v3 = mesh.addVertex({ { x1, y1, z - w },{ 1.0f, 0.0f, textureIndex } });
-			mesh.addTriangle(v0, v1, v2);
-			mesh.addTriangle(v2, v3, v0);
+			if (renderRight) {
+				v0 = mesh.addVertex({ { x1, y1, z },{ 2.0f, 0.0f, textureIndex } });
+				v1 = mesh.addVertex({ { x1, y0, z },{ 2.0f, 1.0f, textureIndex } });
+				v2 = mesh.addVertex({ { x1, y0, z - w },{ 1.0f, 1.0f, textureIndex } });
+				v3 = mesh.addVertex({ { x1, y1, z - w },{ 1.0f, 0.0f, textureIndex } });
+				mesh.addTriangle(v0, v1, v2);
+				mesh.addTriangle(v2, v3, v0);
+			}
 		}
 	};
 }
