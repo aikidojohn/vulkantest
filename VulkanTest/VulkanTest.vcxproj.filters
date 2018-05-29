@@ -32,5 +32,8 @@
     <ClInclude Include="GraphicsContext.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="ChunkManager.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
