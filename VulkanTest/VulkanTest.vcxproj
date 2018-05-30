@@ -159,6 +159,7 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="ChunkManager.h" />
     <ClInclude Include="GraphicsContext.h" />
+    <ClInclude Include="MemoryManager.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="Texture.h" />
   </ItemGroup>
