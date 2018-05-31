@@ -83,15 +83,6 @@ namespace blok {
 					mBlocks[i][j] = new Block[CHUNK_SIZE];
 				}
 			}
-			//carve a hole for testing face culling
-			/*for (int x = 3; x < 7; x++) {
-				for (int z = 0; z < 6; z++) {
-					mBlocks[x][4][z].setActive(false);
-					mBlocks[x][5][z].setActive(false);
-					mBlocks[x+1][4][z].setActive(false);
-					mBlocks[x+1][5][z].setActive(false);
-				}
-			}*/
 		}
 
 		~Chunk() {
@@ -109,6 +100,9 @@ namespace blok {
 		}
 
 		void render(Mesh<Vertex> &mesh, float xOffset, float yOffset, float zOffset) {
+			static std::mt19937 engine;
+			static std::uniform_int_distribution<> dist(3, 3);
+
 			float cubeSize = CUBE_SIZE;
 			//float xOffset = 0.0f; //0.25f;
 			//float yOffset = 0.0f; //0.25f;
@@ -141,7 +135,8 @@ namespace blok {
 							if (y < CHUNK_SIZE - 1)
 								renderBottom = !mBlocks[x][y+1][z].isActive();
 
-							renderBlock(mesh, x * -cubeSize + xOffset, y * -cubeSize + yOffset, z * -cubeSize + zOffset, rand() % 2, cubeSize, renderLeft, renderFront, renderRight, renderBack, renderTop, renderBottom);
+							renderBlock(mesh, x * cubeSize + xOffset, y * cubeSize + yOffset, z * -cubeSize + zOffset, /*dist(engine)*/y % 3, cubeSize, renderLeft, renderFront, renderRight, renderBack, renderTop, renderBottom);
+							//renderBlock(mesh, x * cubeSize + xOffset, y * cubeSize + yOffset, z * -cubeSize + zOffset, rand() % 2, cubeSize, true, true, true, true, true, true);
 						}
 					}
 				}
@@ -152,108 +147,181 @@ namespace blok {
 		Block*** mBlocks;
 
 		void renderBlock(Mesh<Vertex> &mesh, float x, float y, float z, float textureIndex, float w, bool renderLeft, bool renderFront, bool renderRight, bool renderBack, bool renderTop, bool renderBottom) {
-			float x0 = x;
-			float y0 = y;
-			float x1 = x + w;
-			float y1 = y + w;
+			glm::vec3 p0 = {x, y, z};
+			glm::vec3 p1 = {x + w, y, z};
+			glm::vec3 p2 = {x + w, y + w, z};
+			glm::vec3 p3 = {x, y + w, z};
+			glm::vec3 p4 = {x, y, z - w};
+			glm::vec3 p5 = {x ,y + w, z - w};
+			glm::vec3 p6 = {x + w, y + w, z - w};
+			glm::vec3 p7 = {x + w, y, z - w};
 			uint32_t v0, v1, v2, v3;
+
 			//Front;
 			if (renderFront) {
-				v0 = mesh.addVertex({ { x0, y0, z },{ 2.0f, 1.0f, textureIndex } });
-				v1 = mesh.addVertex({ { x1, y0, z },{ 1.0f, 1.0f, textureIndex } });
-				v2 = mesh.addVertex({ { x1, y1, z },{ 1.0f, 0.0f, textureIndex } });
-				v3 = mesh.addVertex({ { x0, y1, z },{ 2.0f, 0.0f, textureIndex } });
+				v0 = mesh.addVertex({ p0, { 2.0f, 1.0f, textureIndex } });
+				v1 = mesh.addVertex({ p1, { 1.0f, 1.0f, textureIndex } });
+				v2 = mesh.addVertex({ p2, { 1.0f, 0.0f, textureIndex } });
+				v3 = mesh.addVertex({ p3, { 2.0f, 0.0f, textureIndex } });
 				mesh.addTriangle(v0, v1, v2);
 				mesh.addTriangle(v2, v3, v0);
 			}
 
 			//Back
 			if (renderBack) {
-				v0 = mesh.addVertex({ { x0, y0, z - w },{ 1.0f, 1.0f, textureIndex } });
-				v1 = mesh.addVertex({ { x0, y1, z - w },{ 1.0f, 0.0f, textureIndex } });
-				v2 = mesh.addVertex({ { x1, y1, z - w },{ 0.0f, 0.0f, textureIndex } });
-				v3 = mesh.addVertex({ { x1, y0, z - w },{ 0.0f, 1.0f, textureIndex } });
+				v0 = mesh.addVertex({ p4, { 1.0f, 1.0f, textureIndex } });
+				v1 = mesh.addVertex({ p5, { 1.0f, 0.0f, textureIndex } });
+				v2 = mesh.addVertex({ p6, { 0.0f, 0.0f, textureIndex } });
+				v3 = mesh.addVertex({ p7, { 0.0f, 1.0f, textureIndex } });
 				mesh.addTriangle(v0, v1, v2);
 				mesh.addTriangle(v2, v3, v0);
 			}
 
 			//Top
-			if (renderTop) {
-				v0 = mesh.addVertex({ { x0, y1, z },{ 2.0f, 1.0f, textureIndex } });
-				v1 = mesh.addVertex({ { x1, y1, z },{ 1.0f, 1.0f, textureIndex } });
-				v2 = mesh.addVertex({ { x1, y1, z - w },{ 1.0f, 0.0f, textureIndex } });
-				v3 = mesh.addVertex({ { x0, y1, z - w },{ 2.0f, 0.0f, textureIndex } });
+			if (renderBottom) {
+				v0 = mesh.addVertex({ p3, { 2.0f, 1.0f, textureIndex } });
+				v1 = mesh.addVertex({ p2, { 1.0f, 1.0f, textureIndex } });
+				v2 = mesh.addVertex({ p6, { 1.0f, 0.0f, textureIndex } });
+				v3 = mesh.addVertex({ p5, { 2.0f, 0.0f, textureIndex } });
 				mesh.addTriangle(v0, v1, v2);
 				mesh.addTriangle(v2, v3, v0);
 			}
 
 			//Bottom
-			if (renderBottom) {
-				v0 = mesh.addVertex({ { x1, y0, z },{ 1.0f, 0.0f, textureIndex } });
-				v1 = mesh.addVertex({ { x0, y0, z },{ 2.0f, 0.0f, textureIndex } });
-				v2 = mesh.addVertex({ { x0, y0, z - w },{ 2.0f, 1.0f, textureIndex } });
-				v3 = mesh.addVertex({ { x1, y0, z - w },{ 1.0f, 1.0f, textureIndex } });
+			if (renderTop) {
+				v0 = mesh.addVertex({ p1, { 1.0f, 0.0f, textureIndex } });
+				v1 = mesh.addVertex({ p0, { 2.0f, 0.0f, textureIndex } });
+				v2 = mesh.addVertex({ p4, { 2.0f, 1.0f, textureIndex } });
+				v3 = mesh.addVertex({ p7, { 1.0f, 1.0f, textureIndex } });
 				mesh.addTriangle(v0, v1, v2);
 				mesh.addTriangle(v2, v3, v0);
 			}
 
 			//Left
-			if (renderLeft) {
-				v0 = mesh.addVertex({ { x0, y0, z },{ 1.0f, 1.0f, textureIndex } });
-				v1 = mesh.addVertex({ { x0, y1, z },{ 1.0f, 0.0f, textureIndex } });
-				v2 = mesh.addVertex({ { x0, y1, z - w },{ 0.0f, 0.0f, textureIndex } });
-				v3 = mesh.addVertex({ { x0, y0, z - w },{ 0.0f, 1.0f, textureIndex } });
+			if (renderRight) {
+				v0 = mesh.addVertex({ p0,{ 1.0f, 1.0f, textureIndex } });
+				v1 = mesh.addVertex({ p3,{ 1.0f, 0.0f, textureIndex } });
+				v2 = mesh.addVertex({ p5,{ 0.0f, 0.0f, textureIndex } });
+				v3 = mesh.addVertex({ p4,{ 0.0f, 1.0f, textureIndex } });
 				mesh.addTriangle(v0, v1, v2);
 				mesh.addTriangle(v2, v3, v0);
 			}
 
 			//Right
-			if (renderRight) {
-				v0 = mesh.addVertex({ { x1, y1, z },{ 2.0f, 0.0f, textureIndex } });
-				v1 = mesh.addVertex({ { x1, y0, z },{ 2.0f, 1.0f, textureIndex } });
-				v2 = mesh.addVertex({ { x1, y0, z - w },{ 1.0f, 1.0f, textureIndex } });
-				v3 = mesh.addVertex({ { x1, y1, z - w },{ 1.0f, 0.0f, textureIndex } });
+			if (renderLeft) {
+				v0 = mesh.addVertex({ p2, { 2.0f, 0.0f, textureIndex } });
+				v1 = mesh.addVertex({ p1, { 2.0f, 1.0f, textureIndex } });
+				v2 = mesh.addVertex({ p7, { 1.0f, 1.0f, textureIndex } });
+				v3 = mesh.addVertex({ p6, { 1.0f, 0.0f, textureIndex } });
 				mesh.addTriangle(v0, v1, v2);
 				mesh.addTriangle(v2, v3, v0);
 			}
 		}
 	};
 
-	struct diamond_params {
-		int step;
-		int x;
-		int z;
-		int mag;
-	};
-
 	class HeightMap {
 	public:
 		int size;
-		float* data;
+		double* data;
 		HeightMap(int size) {
-			data = new float[size * size];
-			size = size;
+			data = new double[size * size];
+			memset(data, 0, sizeof(data[0]) * size * size);
+			this->size = size;
+			std::random_device realRandom;
+			std::seed_seq seed{ realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom() };
+			engine = new std::mt19937(seed);
+			dist = new std::uniform_real_distribution<>(-1.0f, 1.0f);
+			set(0, 0, rand());
+			set(0, size - 1, rand());
+			set(size - 1, 0, rand());
+			set(size - 1, size - 1, rand());
+			//print();
 		}
 
 		~HeightMap() {
 			delete[] data;
+			delete dist;
+			delete engine;
 		}
 
-		float get(int x, int z) {
-			return data[(x & (size - 1)) + (z & (size - 1)) * size];
+		double get(int x, int z) {
+			return data[x % size + (z % size) * size];
+			//return data[(x & (size - 1)) + (z & (size - 1)) * size];
 		}
 
-		void set(int x, int z, float value) {
-			data[(x & (size - 1)) + (z & (size - 1)) * size] = value;
+		void set(int x, int z, double value) {
+			data[x % size + (z % size) * size] = value;
+			//data[(x & (size - 1)) + (z & (size - 1)) * size] = value;
 		}
 
+		void diamondSquare() {
+			int step = size;
+			double scale = 1.0;
+			while (step > 1) {
+				diamondSquareStep(step, scale);
+				//print();
+				step /= 2;
+				scale /= 2.0;
+			}
+		}
+		void print() {
+			for (int z = 0; z < size; z++) {
+				std::cout << "[ ";
+				for (int x = 0; x < size - 1; x++) {
+					std::cout << get(x, z) << ", ";
+				}
+				std::cout << get(size - 1, z) << " ]" << std::endl;
+			}
+		}
+
+	private:
+		std::mt19937* engine;
+		std::uniform_real_distribution<>* dist;
+
+		double rand() {
+			return (*dist)(*engine);
+		}
+
+		void diamondSquareStep(int step, double scale) {
+			int half = step / 2;
+			for (int z = half; z < size + half; z += step) {
+				for (int x = half; x < size + half; x += step) {
+					square(x, z, step, scale);
+				}
+			}
+
+			for (int z = 0; z < size; z += step) {
+				for (int x = 0; x < size; x += step) {
+					diamond(x + half, z, step, scale);
+					diamond(x, z + half, step, scale);
+				}
+			}
+		}
+
+		void square(int x, int z, int step, double scale) {
+			int half = step / 2;
+			double a = get(x - half, z - half);
+			double b = get(x + half, z - half);
+			double c = get(x - half, z + half);
+			double d = get(x + half, z + half);
+			set(x, z, ((a + b + c + d) / 4.0) + rand() * scale);
+		}
+
+		void diamond(int x, int z, int step, double scale) {
+			int half = step / 2;
+			double a = get(x - half, z);
+			double b = get(x + half, z);
+			double c = get(x, z - half);
+			double d = get(x, z + half);
+			set(x, z, ((a + b + c + d) / 4.0) + rand() * scale);
+		}
 	};
 	class ChunkManager {
 	public:
 		Mesh<Vertex> mesh;
 		
 		ChunkManager() {
-			for (int i = 0; i < worldSize * worldSize; i++) {
+			for (int i = 0; i < worldSize * worldSize * worldHeight; i++) {
 				activeList.push_back(new Chunk());
 			}
 		}
@@ -266,14 +334,24 @@ namespace blok {
 
 		void render() {
 			diamondSquare();
-			for (int i = 0; i < activeList.size(); i++) {
+			/*for (int i = 0; i < activeList.size(); i++) {
 				activeList[i]->render(mesh, (float)(i/ worldSize) * Chunk::CHUNK_SIZE * CUBE_SIZE, 0.0f, (float)(i % worldSize) * Chunk::CHUNK_SIZE * CUBE_SIZE);
+			}*/
+			for (int cz = 0; cz < worldSize; cz++) {
+				for (int cx = 0; cx < worldSize; cx++) {
+					for (int cy = worldHeight - 1; cy >= 0; cy--) {
+						//std::cout << "rendering chunk: " <<(cx + cz * worldSize) << " : " << cx << ", " << cz << " at " << (cx *Chunk::CHUNK_SIZE * CUBE_SIZE) << ", " << (cz * Chunk::CHUNK_SIZE * CUBE_SIZE) << std::endl;
+						Chunk* chunk = activeList[cx + cy * worldHeight + cz * worldSize];
+						chunk->render(mesh, cx *Chunk::CHUNK_SIZE * CUBE_SIZE, cy * -worldHeight, -cz * Chunk::CHUNK_SIZE * CUBE_SIZE);
+					}
+				}
 			}
 			std::cout << "Vertex Count: " << mesh.vertices.size() << ", Triangles: " << mesh.indices.size() / 3 << std::endl;
 		}
 
 	private:
-		int worldSize = 12;
+		int worldSize = 9;
+		int worldHeight = 1;
 		bool updateRequired = true;
 		std::vector<Chunk*> activeList;
 		std::vector<Chunk*> loadList;
@@ -283,109 +361,41 @@ namespace blok {
 		Generate terrian using diamond square algorithm
 		*/
 		void diamondSquare() {
-			std::random_device realRandom;
-			std::seed_seq seed{ realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom() };
-			std::mt19937 engine(seed);
-			std::uniform_int_distribution<> rand(0, 16);
-			
-			int mag = 16;
 			int size = 257;
-			int steps = log2(size);
+			HeightMap heightMap(size);
+			heightMap.diamondSquare();
 
-			int heightMap[257][257];
-			memset(heightMap, 0, sizeof(heightMap[0][0]) * size * size);
-			heightMap[0][0] = rand(engine);
-			heightMap[0][size -1] = rand(engine);
-			heightMap[size -1][0] = rand(engine);
-			heightMap[size -1][size -1] = rand(engine);
-			std::queue<diamond_params> queue;
-			queue.push({ size, 0, 0, 16 });
-			while (queue.size() > 0) {
-				diamond_params p = queue.front();
-				queue.pop();
-				diamond(p.step, p.x, p.z, p.mag, heightMap, engine);
-				int next = p.step / 2;
-				int nextMag = p.mag - (mag / steps) + 1;
-				if (next > 1) {
-					queue.push({ next + 1, p.x, p.z, nextMag });
-					queue.push({ next + 1, p.x + next, p.z, nextMag });
-					queue.push({ next + 1, p.x, p.z + next, nextMag });
-					queue.push({ next + 1, p.x + next, p.z + next, nextMag });
-				}
-			}
-
-			for (int cx = 0; cx < worldSize; cx++) {
-				for (int cz = 0; cz < worldSize; cz++) {
-					Chunk* chunk = activeList[cx * worldSize + cz];
-					for (int x = 0; x < Chunk::CHUNK_SIZE; x++) {
-						for (int z = 0; z < Chunk::CHUNK_SIZE; z++) {
-							int maxY = heightMap[cx*Chunk::CHUNK_SIZE + x][cz * Chunk::CHUNK_SIZE + z];
-							for (int y = 0; y < maxY; y++) {
-								chunk->setActive(x, y, z, false);
+			int terrainHeight = Chunk::CHUNK_SIZE * worldHeight / 2;
+			for (int cz = 0; cz < worldSize; cz++) {
+				for (int cx = 0; cx < worldSize; cx++) {			
+					for (int z = 0; z < Chunk::CHUNK_SIZE; z++) {
+						for (int x = 0; x < Chunk::CHUNK_SIZE; x++) {
+							double yscale = heightMap.get(cx*Chunk::CHUNK_SIZE + x, cz * Chunk::CHUNK_SIZE + z);
+							int maxY = clamp(terrainHeight * yscale, -terrainHeight, terrainHeight) + terrainHeight;
+							int minCy = maxY / Chunk::CHUNK_SIZE;
+							int startY = maxY - minCy * Chunk::CHUNK_SIZE;
+							for (int cy = minCy; cy < worldHeight; cy++) {
+								Chunk* chunk = activeList[cx + cy * worldHeight + cz * worldSize];
+								for (int y = startY; y < Chunk::CHUNK_SIZE; y++) {
+									chunk->setActive(x, y, z, false);
+								}
+								startY = 0;
 							}
 						}
 					}
+					
 				}
 			}
 		}
 
-		void diamond(int step, int xOffset, int zOffset, int mag, int (&heightMap)[257][257], std::mt19937 engine) {
-			int mid = step / 2;
-			int corner = step - 1;
-			int size = 257;
-			std::uniform_int_distribution<> rand(0, mag);
-
-			heightMap[xOffset + mid][zOffset + mid] = avg(
-				heightMap[xOffset][zOffset], 
-				heightMap[xOffset][zOffset + corner],
-				heightMap[xOffset + corner][zOffset],
-				heightMap[xOffset + corner][zOffset + corner],
-				rand(engine));
-
-			//Square step
-			int wrap = zOffset - mid < 0 ? zOffset - mid + size - 1 : zOffset - mid;
-			heightMap[xOffset + mid][zOffset] = avg(
-				heightMap[xOffset + mid][zOffset + mid],
-				heightMap[xOffset][zOffset],
-				heightMap[xOffset + corner][zOffset],
-				heightMap[xOffset + mid][wrap],
-				rand(engine)
-			); 
-
-			wrap = (zOffset + corner + mid) % size;
-			heightMap[xOffset + mid][zOffset + corner] = avg(
-				heightMap[xOffset + mid][zOffset + mid],
-				heightMap[xOffset][zOffset + corner],
-				heightMap[xOffset + corner][zOffset + corner],
-				heightMap[xOffset + mid][wrap],
-				rand(engine)
-			);
-
-			wrap = xOffset - mid < 0 ? xOffset - mid + size - 1 : xOffset - mid;
-			heightMap[xOffset][zOffset + mid] = avg(
-				heightMap[xOffset + mid][zOffset + mid],
-				heightMap[xOffset][zOffset],
-				heightMap[xOffset][zOffset + corner],
-				heightMap[wrap][zOffset + mid],
-				rand(engine)
-			);
-
-			wrap = (xOffset + corner + mid) % size;
-			heightMap[xOffset + corner][zOffset + mid] = avg(
-				heightMap[xOffset + mid][zOffset + mid],
-				heightMap[xOffset + corner][zOffset],
-				heightMap[xOffset + corner][zOffset + corner],
-				heightMap[wrap][zOffset + mid],
-				rand(engine)
-			);
-		}
-
-		int avg(int a, int b, int c, int d) {
-			return (int)std::round((float)(a + b + c + d) / 4.0f);
-		}
-
-		int avg(int a, int b, int c, int d, int e) {
-			return (int)std::round((float)(a + b + c + d + e) / 5.0f);
+		int clamp(int val, int min, int max) {
+			if (val < min) {
+				return min;
+			}
+			if (val > max) {
+				return max;
+			}
+			return val;
 		}
 	};
 }
