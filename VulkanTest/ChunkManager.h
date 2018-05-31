@@ -28,13 +28,6 @@
 
 namespace blok {
 
-	struct diamond_params {
-		int step;
-		int x;
-		int z;
-		int mag;
-	};
-
 	struct Vertex {
 		glm::vec3 pos;
 		glm::vec3 texCoord;
@@ -91,14 +84,14 @@ namespace blok {
 				}
 			}
 			//carve a hole for testing face culling
-			for (int x = 3; x < 7; x++) {
+			/*for (int x = 3; x < 7; x++) {
 				for (int z = 0; z < 6; z++) {
 					mBlocks[x][4][z].setActive(false);
 					mBlocks[x][5][z].setActive(false);
 					mBlocks[x+1][4][z].setActive(false);
 					mBlocks[x+1][5][z].setActive(false);
 				}
-			}
+			}*/
 		}
 
 		~Chunk() {
@@ -226,6 +219,35 @@ namespace blok {
 		}
 	};
 
+	struct diamond_params {
+		int step;
+		int x;
+		int z;
+		int mag;
+	};
+
+	class HeightMap {
+	public:
+		int size;
+		float* data;
+		HeightMap(int size) {
+			data = new float[size * size];
+			size = size;
+		}
+
+		~HeightMap() {
+			delete[] data;
+		}
+
+		float get(int x, int z) {
+			return data[(x & (size - 1)) + (z & (size - 1)) * size];
+		}
+
+		void set(int x, int z, float value) {
+			data[(x & (size - 1)) + (z & (size - 1)) * size] = value;
+		}
+
+	};
 	class ChunkManager {
 	public:
 		Mesh<Vertex> mesh;
@@ -267,10 +289,10 @@ namespace blok {
 			std::uniform_int_distribution<> rand(0, 16);
 			
 			int mag = 16;
-			int size = 9;
-			int steps = log2(9);
+			int size = 257;
+			int steps = log2(size);
 
-			int heightMap[9][9];
+			int heightMap[257][257];
 			memset(heightMap, 0, sizeof(heightMap[0][0]) * size * size);
 			heightMap[0][0] = rand(engine);
 			heightMap[0][size -1] = rand(engine);
@@ -281,7 +303,7 @@ namespace blok {
 			while (queue.size() > 0) {
 				diamond_params p = queue.front();
 				queue.pop();
-				diamond(p.step, p.z, p.z, mag, heightMap);
+				diamond(p.step, p.x, p.z, p.mag, heightMap, engine);
 				int next = p.step / 2;
 				int nextMag = p.mag - (mag / steps) + 1;
 				if (next > 1) {
@@ -292,31 +314,33 @@ namespace blok {
 				}
 			}
 
-			/*for (int cx = 0; cx < worldSize; cx++) {
+			for (int cx = 0; cx < worldSize; cx++) {
 				for (int cz = 0; cz < worldSize; cz++) {
 					Chunk* chunk = activeList[cx * worldSize + cz];
 					for (int x = 0; x < Chunk::CHUNK_SIZE; x++) {
 						for (int z = 0; z < Chunk::CHUNK_SIZE; z++) {
-							int maxY = heightMap[cx*Chunk::CHUNK_SIZE + x][cz*Chunk::CHUNK_SIZE + z];
-							for (int y = maxY; y < Chunk::CHUNK_SIZE; y++) {
+							int maxY = heightMap[cx*Chunk::CHUNK_SIZE + x][cz * Chunk::CHUNK_SIZE + z];
+							for (int y = 0; y < maxY; y++) {
 								chunk->setActive(x, y, z, false);
 							}
 						}
 					}
 				}
-			}*/
+			}
 		}
 
-		void diamond(int step, int xOffset, int zOffset, int mag, int (&heightMap)[9][9]) {
+		void diamond(int step, int xOffset, int zOffset, int mag, int (&heightMap)[257][257], std::mt19937 engine) {
 			int mid = step / 2;
 			int corner = step - 1;
-			int size = 9;
+			int size = 257;
+			std::uniform_int_distribution<> rand(0, mag);
 
 			heightMap[xOffset + mid][zOffset + mid] = avg(
 				heightMap[xOffset][zOffset], 
 				heightMap[xOffset][zOffset + corner],
 				heightMap[xOffset + corner][zOffset],
-				heightMap[xOffset + corner][zOffset + corner]);
+				heightMap[xOffset + corner][zOffset + corner],
+				rand(engine));
 
 			//Square step
 			int wrap = zOffset - mid < 0 ? zOffset - mid + size - 1 : zOffset - mid;
@@ -324,7 +348,8 @@ namespace blok {
 				heightMap[xOffset + mid][zOffset + mid],
 				heightMap[xOffset][zOffset],
 				heightMap[xOffset + corner][zOffset],
-				heightMap[xOffset + mid][wrap]
+				heightMap[xOffset + mid][wrap],
+				rand(engine)
 			); 
 
 			wrap = (zOffset + corner + mid) % size;
@@ -332,7 +357,8 @@ namespace blok {
 				heightMap[xOffset + mid][zOffset + mid],
 				heightMap[xOffset][zOffset + corner],
 				heightMap[xOffset + corner][zOffset + corner],
-				heightMap[xOffset + mid][wrap]
+				heightMap[xOffset + mid][wrap],
+				rand(engine)
 			);
 
 			wrap = xOffset - mid < 0 ? xOffset - mid + size - 1 : xOffset - mid;
@@ -340,7 +366,8 @@ namespace blok {
 				heightMap[xOffset + mid][zOffset + mid],
 				heightMap[xOffset][zOffset],
 				heightMap[xOffset][zOffset + corner],
-				heightMap[wrap][zOffset + mid]
+				heightMap[wrap][zOffset + mid],
+				rand(engine)
 			);
 
 			wrap = (xOffset + corner + mid) % size;
@@ -348,7 +375,8 @@ namespace blok {
 				heightMap[xOffset + mid][zOffset + mid],
 				heightMap[xOffset + corner][zOffset],
 				heightMap[xOffset + corner][zOffset + corner],
-				heightMap[wrap][zOffset + mid]
+				heightMap[wrap][zOffset + mid],
+				rand(engine)
 			);
 		}
 
