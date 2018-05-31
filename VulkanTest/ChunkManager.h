@@ -229,8 +229,9 @@ namespace blok {
 			this->size = size;
 			std::random_device realRandom;
 			std::seed_seq seed{ realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom() };
-			engine = new std::mt19937(seed);
+			engine = new std::mt19937(123456);
 			dist = new std::uniform_real_distribution<>(-1.0f, 1.0f);
+			rand();
 			set(0, 0, rand());
 			set(0, size - 1, rand());
 			set(size - 1, 0, rand());
@@ -245,12 +246,12 @@ namespace blok {
 		}
 
 		double get(int x, int z) {
-			return data[x % size + (z % size) * size];
+			return data[(x % size + size) % size + ((z % size + size) % size) * size];
 			//return data[(x & (size - 1)) + (z & (size - 1)) * size];
 		}
 
 		void set(int x, int z, double value) {
-			data[x % size + (z % size) * size] = value;
+			data[(x % size + size) % size + ((z % size + size) % size) * size] = value;
 			//data[(x & (size - 1)) + (z & (size - 1)) * size] = value;
 		}
 
@@ -334,15 +335,16 @@ namespace blok {
 
 		void render() {
 			diamondSquare();
-			/*for (int i = 0; i < activeList.size(); i++) {
-				activeList[i]->render(mesh, (float)(i/ worldSize) * Chunk::CHUNK_SIZE * CUBE_SIZE, 0.0f, (float)(i % worldSize) * Chunk::CHUNK_SIZE * CUBE_SIZE);
-			}*/
+			float chunkRenderSize = CUBE_SIZE * Chunk::CHUNK_SIZE;
 			for (int cz = 0; cz < worldSize; cz++) {
 				for (int cx = 0; cx < worldSize; cx++) {
-					for (int cy = worldHeight - 1; cy >= 0; cy--) {
-						//std::cout << "rendering chunk: " <<(cx + cz * worldSize) << " : " << cx << ", " << cz << " at " << (cx *Chunk::CHUNK_SIZE * CUBE_SIZE) << ", " << (cz * Chunk::CHUNK_SIZE * CUBE_SIZE) << std::endl;
-						Chunk* chunk = activeList[cx + cy * worldHeight + cz * worldSize];
-						chunk->render(mesh, cx *Chunk::CHUNK_SIZE * CUBE_SIZE, cy * -worldHeight, -cz * Chunk::CHUNK_SIZE * CUBE_SIZE);
+					for (int cy = 0; cy < worldHeight; cy++) {
+						int chunkIndex = cx + cy * worldHeight + cz * worldSize * worldHeight;
+						float xOffset = chunkRenderSize * cx;
+						float yOffset = chunkRenderSize * (cy - worldHeight);
+						float zOffset = chunkRenderSize  *-cz;
+						Chunk* chunk = getChunk(cx, cy, cz);
+						chunk->render(mesh, xOffset, yOffset, zOffset);
 					}
 				}
 			}
@@ -350,8 +352,8 @@ namespace blok {
 		}
 
 	private:
-		int worldSize = 9;
-		int worldHeight = 1;
+		int worldSize = 12;
+		int worldHeight = 7;
 		bool updateRequired = true;
 		std::vector<Chunk*> activeList;
 		std::vector<Chunk*> loadList;
@@ -361,31 +363,41 @@ namespace blok {
 		Generate terrian using diamond square algorithm
 		*/
 		void diamondSquare() {
-			int size = 257;
-			HeightMap heightMap(size);
+			HeightMap heightMap(257);
 			heightMap.diamondSquare();
 
-			int terrainHeight = Chunk::CHUNK_SIZE * worldHeight / 2;
+			int terrainHeight = Chunk::CHUNK_SIZE / 2 * worldHeight;
 			for (int cz = 0; cz < worldSize; cz++) {
-				for (int cx = 0; cx < worldSize; cx++) {			
-					for (int z = 0; z < Chunk::CHUNK_SIZE; z++) {
-						for (int x = 0; x < Chunk::CHUNK_SIZE; x++) {
-							double yscale = heightMap.get(cx*Chunk::CHUNK_SIZE + x, cz * Chunk::CHUNK_SIZE + z);
-							int maxY = clamp(terrainHeight * yscale, -terrainHeight, terrainHeight) + terrainHeight;
-							int minCy = maxY / Chunk::CHUNK_SIZE;
-							int startY = maxY - minCy * Chunk::CHUNK_SIZE;
-							for (int cy = minCy; cy < worldHeight; cy++) {
-								Chunk* chunk = activeList[cx + cy * worldHeight + cz * worldSize];
+				for (int cx = 0; cx < worldSize; cx++) {
+					for (int cy = 0; cy < worldHeight; cy++) {
+						Chunk* chunk = getChunk(cx, cy, cz);
+						for (int z = 0; z < Chunk::CHUNK_SIZE; z++) {
+							for (int x = 0; x < Chunk::CHUNK_SIZE; x++) {
+								double yscale = heightMap.get(cx*Chunk::CHUNK_SIZE + x, cz * Chunk::CHUNK_SIZE + z);
+								int maxY = clamp(terrainHeight * yscale, -terrainHeight, terrainHeight) + terrainHeight;
+								int minCy = maxY / Chunk::CHUNK_SIZE;
+								int startY = 0; //default to setting whole chunk to air
+								if (cy == minCy) {
+									//equal to min chunk so may contain some blocks and some air
+									startY = maxY - minCy * Chunk::CHUNK_SIZE;
+								}
+								else if (cy < minCy) {
+									//under min chunck, so it contains blocks
+									startY = Chunk::CHUNK_SIZE;
+								}
 								for (int y = startY; y < Chunk::CHUNK_SIZE; y++) {
 									chunk->setActive(x, y, z, false);
 								}
-								startY = 0;
 							}
 						}
 					}
-					
 				}
 			}
+		}
+
+		Chunk* getChunk(int x, int y, int z) {
+			int index = (y * worldSize * worldSize) + (x * worldSize) + z;
+			return activeList[index];
 		}
 
 		int clamp(int val, int min, int max) {
