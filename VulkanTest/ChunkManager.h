@@ -31,6 +31,7 @@ namespace blok {
 	struct Vertex {
 		glm::vec3 pos;
 		glm::vec3 texCoord;
+		glm::vec3 normal;
 
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription bindingDescription = {};
@@ -41,8 +42,8 @@ namespace blok {
 			return bindingDescription;
 		}
 
-		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
+		static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
 			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -52,6 +53,11 @@ namespace blok {
 			attributeDescriptions[1].location = 1;
 			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[1].offset = offsetof(Vertex, texCoord);
+
+			attributeDescriptions[2].binding = 0;
+			attributeDescriptions[2].location = 2;
+			attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[2].offset = offsetof(Vertex, normal);
 			return attributeDescriptions;
 		}
 	};
@@ -157,62 +163,69 @@ namespace blok {
 			glm::vec3 p7 = {x + w, y, z - w};
 			uint32_t v0, v1, v2, v3;
 
+			glm::vec3 normalF = {0, 0, 1};
+			glm::vec3 normalB = { 0, 0, -1 }; 
+			glm::vec3 normalL = { -1, 0, 0 };
+			glm::vec3 normalR = { 1, 0, 0 };
+			glm::vec3 normalU = { 0, 1, 0 };
+			glm::vec3 normalD = { 0, -1, 0 };
+
 			//Front;
 			if (renderFront) {
-				v0 = mesh.addVertex({ p0, { 2.0f, 1.0f, textureIndex } });
-				v1 = mesh.addVertex({ p1, { 1.0f, 1.0f, textureIndex } });
-				v2 = mesh.addVertex({ p2, { 1.0f, 0.0f, textureIndex } });
-				v3 = mesh.addVertex({ p3, { 2.0f, 0.0f, textureIndex } });
+				v0 = mesh.addVertex({ p0, { 2.0f, 1.0f, textureIndex }, normalF });
+				v1 = mesh.addVertex({ p1, { 1.0f, 1.0f, textureIndex }, normalF });
+				v2 = mesh.addVertex({ p2, { 1.0f, 0.0f, textureIndex }, normalF });
+				v3 = mesh.addVertex({ p3, { 2.0f, 0.0f, textureIndex }, normalF });
 				mesh.addTriangle(v0, v1, v2);
 				mesh.addTriangle(v2, v3, v0);
 			}
 
 			//Back
 			if (renderBack) {
-				v0 = mesh.addVertex({ p4, { 1.0f, 1.0f, textureIndex } });
-				v1 = mesh.addVertex({ p5, { 1.0f, 0.0f, textureIndex } });
-				v2 = mesh.addVertex({ p6, { 0.0f, 0.0f, textureIndex } });
-				v3 = mesh.addVertex({ p7, { 0.0f, 1.0f, textureIndex } });
+				v0 = mesh.addVertex({ p4, { 1.0f, 1.0f, textureIndex }, normalB });
+				v1 = mesh.addVertex({ p5, { 1.0f, 0.0f, textureIndex }, normalB });
+				v2 = mesh.addVertex({ p6, { 0.0f, 0.0f, textureIndex }, normalB });
+				v3 = mesh.addVertex({ p7, { 0.0f, 1.0f, textureIndex }, normalB });
 				mesh.addTriangle(v0, v1, v2);
 				mesh.addTriangle(v2, v3, v0);
 			}
 
 			//Top
 			if (renderBottom) {
-				v0 = mesh.addVertex({ p3, { 2.0f, 1.0f, textureIndex } });
-				v1 = mesh.addVertex({ p2, { 1.0f, 1.0f, textureIndex } });
-				v2 = mesh.addVertex({ p6, { 1.0f, 0.0f, textureIndex } });
-				v3 = mesh.addVertex({ p5, { 2.0f, 0.0f, textureIndex } });
+				v0 = mesh.addVertex({ p3, { 2.0f, 1.0f, textureIndex }, normalU });
+				v1 = mesh.addVertex({ p2, { 1.0f, 1.0f, textureIndex }, normalU });
+				v2 = mesh.addVertex({ p6, { 1.0f, 0.0f, textureIndex }, normalU });
+				v3 = mesh.addVertex({ p5, { 2.0f, 0.0f, textureIndex }, normalU });
 				mesh.addTriangle(v0, v1, v2);
 				mesh.addTriangle(v2, v3, v0);
 			}
 
 			//Bottom
 			if (renderTop) {
-				v0 = mesh.addVertex({ p1, { 1.0f, 0.0f, textureIndex } });
-				v1 = mesh.addVertex({ p0, { 2.0f, 0.0f, textureIndex } });
-				v2 = mesh.addVertex({ p4, { 2.0f, 1.0f, textureIndex } });
-				v3 = mesh.addVertex({ p7, { 1.0f, 1.0f, textureIndex } });
+				v0 = mesh.addVertex({ p1, { 1.0f, 0.0f, textureIndex }, normalD });
+				v1 = mesh.addVertex({ p0, { 2.0f, 0.0f, textureIndex }, normalD });
+				v2 = mesh.addVertex({ p4, { 2.0f, 1.0f, textureIndex }, normalD });
+				v3 = mesh.addVertex({ p7, { 1.0f, 1.0f, textureIndex }, normalD });
 				mesh.addTriangle(v0, v1, v2);
 				mesh.addTriangle(v2, v3, v0);
 			}
 
 			//Left
 			if (renderRight) {
-				v0 = mesh.addVertex({ p0,{ 1.0f, 1.0f, textureIndex } });
-				v1 = mesh.addVertex({ p3,{ 1.0f, 0.0f, textureIndex } });
-				v2 = mesh.addVertex({ p5,{ 0.0f, 0.0f, textureIndex } });
-				v3 = mesh.addVertex({ p4,{ 0.0f, 1.0f, textureIndex } });
+				v0 = mesh.addVertex({ p0,{ 1.0f, 1.0f, textureIndex }, normalR });
+				v1 = mesh.addVertex({ p3,{ 1.0f, 0.0f, textureIndex }, normalR });
+				v2 = mesh.addVertex({ p5,{ 0.0f, 0.0f, textureIndex }, normalR });
+				v3 = mesh.addVertex({ p4,{ 0.0f, 1.0f, textureIndex }, normalR });
 				mesh.addTriangle(v0, v1, v2);
 				mesh.addTriangle(v2, v3, v0);
 			}
 
 			//Right
 			if (renderLeft) {
-				v0 = mesh.addVertex({ p2, { 2.0f, 0.0f, textureIndex } });
-				v1 = mesh.addVertex({ p1, { 2.0f, 1.0f, textureIndex } });
-				v2 = mesh.addVertex({ p7, { 1.0f, 1.0f, textureIndex } });
-				v3 = mesh.addVertex({ p6, { 1.0f, 0.0f, textureIndex } });
+				v0 = mesh.addVertex({ p2, { 2.0f, 0.0f, textureIndex }, normalL });
+				v1 = mesh.addVertex({ p1, { 2.0f, 1.0f, textureIndex }, normalL });
+				v2 = mesh.addVertex({ p7, { 1.0f, 1.0f, textureIndex }, normalL });
+				v3 = mesh.addVertex({ p6, { 1.0f, 0.0f, textureIndex }, normalL });
 				mesh.addTriangle(v0, v1, v2);
 				mesh.addTriangle(v2, v3, v0);
 			}
@@ -229,7 +242,7 @@ namespace blok {
 			this->size = size;
 			std::random_device realRandom;
 			std::seed_seq seed{ realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom() };
-			engine = new std::mt19937(123456);
+			engine = new std::mt19937(seed);
 			dist = new std::uniform_real_distribution<>(-1.0f, 1.0f);
 			rand();
 			set(0, 0, rand());
@@ -247,12 +260,10 @@ namespace blok {
 
 		double get(int x, int z) {
 			return data[(x % size + size) % size + ((z % size + size) % size) * size];
-			//return data[(x & (size - 1)) + (z & (size - 1)) * size];
 		}
 
 		void set(int x, int z, double value) {
 			data[(x % size + size) % size + ((z % size + size) % size) * size] = value;
-			//data[(x & (size - 1)) + (z & (size - 1)) * size] = value;
 		}
 
 		void diamondSquare() {
