@@ -11,15 +11,22 @@
 #include <cstdlib>
 #include <cstring>
 #include <chrono>
+#include "ChunkManager.h"
 
 namespace blok {
 
 	class Camera {
 	public:
 		float Zoom = 45.0f;
-		float Speed = 2.5f;
+		float Speed = 3.5f;
 		float Sensitivity = 0.05f;
-		
+		ChunkManager& chunkManager;
+
+		Camera(ChunkManager& chunkManager) : chunkManager(chunkManager) {
+		}
+
+		~Camera() {
+		}
 		
 		glm::mat4 getModelView() {
 			updateCamera();
@@ -63,6 +70,17 @@ namespace blok {
 			auto currentTime = std::chrono::high_resolution_clock::now();
 			float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 			startTime = std::chrono::high_resolution_clock::now();
+
+			Block* block = chunkManager.getBlockAt(cameraPos);
+			if (block != nullptr) {
+				if (block->isActive()) {
+					if (cameraPos.y <= block->y + 2 * CUBE_SIZE) {
+						direction.y = 0;
+						cameraPos.y = block->y + 2* CUBE_SIZE;
+					}
+				}
+				delete block;
+			}
 
 			//fix the player y position so player doesn't move toward y when looking up or down. Lock player in y plane until y is moved.
 			//this is used for camera motion

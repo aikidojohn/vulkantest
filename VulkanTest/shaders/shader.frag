@@ -12,7 +12,7 @@ const vec3 lightColor = vec3(1,1,1);
 
 void main() {
     float df = dot(surfaceNormal, toLightVector);
-    float brightness = max(df, 0.0);
+    float brightness = max(df, 0.5);
     vec3 diffuse = brightness * lightColor;
-    outColor = texture(texSampler, fragTexCoord);
+    outColor = vec4(diffuse, 1.0) * texture(texSampler, fragTexCoord);
 }

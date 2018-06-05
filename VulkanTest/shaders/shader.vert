@@ -19,13 +19,15 @@ out gl_PerVertex {
     vec4 gl_Position;
 };
 
-const vec3 lightPosition = vec3(75, 75, 75);
+const vec3 lightPosition = vec3(100, 100, -100);
 
 void main() {
     vec4 worldPosition = ubo.view * ubo.model * vec4(inPosition, 1.0);
     gl_Position = ubo.proj * worldPosition;
     fragTexCoord = inTexCoord;
 
-    surfaceNormal = normalize((ubo.view * vec4(inNormal, 0.0)).xyz);
-    toLightVector = normalize(lightPosition - worldPosition.xyz);
+    // surfaceNormal = normalize((ubo.view * vec4(inNormal, 0.0)).xyz);
+    // toLightVector = normalize(lightPosition - worldPosition.xyz);
+    surfaceNormal = inNormal;
+    toLightVector = normalize(lightPosition - inPosition);
 }

@@ -67,6 +67,10 @@ namespace blok {
 		bool mActive = true;
 
 	public:
+		float x;
+		float y;
+		float z;
+
 		bool isActive() {
 			return mActive;
 		}
@@ -79,7 +83,6 @@ namespace blok {
 	class Chunk {
 	public:
 		static const int CHUNK_SIZE = 16;
-		//Mesh<Vertex> mesh;
 
 		Chunk() {
 			mBlocks = new Block**[CHUNK_SIZE];
@@ -105,18 +108,24 @@ namespace blok {
 			mBlocks[x][y][z].setActive(false);
 		}
 
+		Block getBlock(int x, int y, int z) {
+			return mBlocks[x][y][z];
+		}
+
 		void render(Mesh<Vertex> &mesh, float xOffset, float yOffset, float zOffset) {
 			static std::mt19937 engine;
 			static std::uniform_int_distribution<> dist(3, 3);
 
 			float cubeSize = CUBE_SIZE;
-			//float xOffset = 0.0f; //0.25f;
-			//float yOffset = 0.0f; //0.25f;
-			//float zOffset = 0.0f;
 			for (int x = 0; x < CHUNK_SIZE; x++) {
 				for (int y = 0; y < CHUNK_SIZE; y++) {
 					for (int z = 0; z < CHUNK_SIZE; z++) {
+						mBlocks[x][y][z].x = x * cubeSize + xOffset;
+						mBlocks[x][y][z].y = y * cubeSize + yOffset;
+						mBlocks[x][y][z].z = z * -cubeSize + zOffset;
 						if (mBlocks[x][y][z].isActive()) {
+							
+
 							bool renderLeft = true;
 							if (x < CHUNK_SIZE - 1)
 								renderLeft = !mBlocks[x+1][y][z].isActive();
@@ -210,7 +219,7 @@ namespace blok {
 				mesh.addTriangle(v2, v3, v0);
 			}
 
-			//Left
+			//Right
 			if (renderRight) {
 				v0 = mesh.addVertex({ p0,{ 1.0f, 1.0f, textureIndex }, normalR });
 				v1 = mesh.addVertex({ p3,{ 1.0f, 0.0f, textureIndex }, normalR });
@@ -220,7 +229,7 @@ namespace blok {
 				mesh.addTriangle(v2, v3, v0);
 			}
 
-			//Right
+			//Left
 			if (renderLeft) {
 				v0 = mesh.addVertex({ p2, { 2.0f, 0.0f, textureIndex }, normalL });
 				v1 = mesh.addVertex({ p1, { 2.0f, 1.0f, textureIndex }, normalL });
@@ -244,7 +253,8 @@ namespace blok {
 			std::seed_seq seed{ realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom(), realRandom() };
 			engine = new std::mt19937(seed);
 			dist = new std::uniform_real_distribution<>(-1.0f, 1.0f);
-			rand();
+
+			//initialize the four corners
 			set(0, 0, rand());
 			set(0, size - 1, rand());
 			set(size - 1, 0, rand());
@@ -266,11 +276,11 @@ namespace blok {
 			data[(x % size + size) % size + ((z % size + size) % size) * size] = value;
 		}
 
-		void diamondSquare() {
+		void generate() {
 			int step = size;
 			double scale = 1.0;
 			while (step > 1) {
-				diamondSquareStep(step, scale);
+				diamondSquare(step, scale);
 				//print();
 				step /= 2;
 				scale /= 2.0;
@@ -294,7 +304,7 @@ namespace blok {
 			return (*dist)(*engine);
 		}
 
-		void diamondSquareStep(int step, double scale) {
+		void diamondSquare(int step, double scale) {
 			int half = step / 2;
 			for (int z = half; z < size + half; z += step) {
 				for (int x = half; x < size + half; x += step) {
@@ -328,6 +338,7 @@ namespace blok {
 			set(x, z, ((a + b + c + d) / 4.0) + rand() * scale);
 		}
 	};
+
 	class ChunkManager {
 	public:
 		Mesh<Vertex> mesh;
@@ -345,7 +356,7 @@ namespace blok {
 		}
 
 		void render() {
-			diamondSquare();
+			generateTerrain();
 			float chunkRenderSize = CUBE_SIZE * Chunk::CHUNK_SIZE;
 			for (int cz = 0; cz < worldSize; cz++) {
 				for (int cx = 0; cx < worldSize; cx++) {
@@ -362,8 +373,34 @@ namespace blok {
 			std::cout << "Vertex Count: " << mesh.vertices.size() << ", Triangles: " << mesh.indices.size() / 3 << std::endl;
 		}
 
+		Block* getBlockAt(glm::vec3 position) {
+			float chunkRenderSize = CUBE_SIZE * Chunk::CHUNK_SIZE;
+			int cx = position.x / chunkRenderSize;
+			int cy = position.y / chunkRenderSize + worldHeight;
+			int cz = -1.0 * position.z / chunkRenderSize;
+
+			Chunk* chunk = getChunk(cx, cy, cz);
+			if (chunk == nullptr) {
+				return nullptr;
+			}
+			float xOffset = chunkRenderSize * cx;
+			float yOffset = chunkRenderSize * (cy - worldHeight);
+			float zOffset = chunkRenderSize * -cz;
+
+			int bx = (position.x - xOffset) / CUBE_SIZE;
+			int by = (position.y - yOffset) / CUBE_SIZE;
+			int bz = -(position.z - zOffset) / CUBE_SIZE;
+			std::cout << "World (" << position.x << ", " << position.y << ", " << position.z << ") -> Chunk(" << cx << ", " << cy << ", " << cz << ") Block(" << bx << ", " << by << ", " << bz << ")" << std::endl;
+			if (bx < 0 || by < 0 || bz < 0 || bx >= Chunk::CHUNK_SIZE || by >= Chunk::CHUNK_SIZE || bz >= Chunk::CHUNK_SIZE) {
+				return nullptr;
+			}
+			Block* b = new Block();  
+			*b = chunk->getBlock(bx, by, bz);
+			return b;
+		}
+
 	private:
-		int worldSize = 12;
+		int worldSize = 9;
 		int worldHeight = 7;
 		bool updateRequired = true;
 		std::vector<Chunk*> activeList;
@@ -373,9 +410,11 @@ namespace blok {
 		/*
 		Generate terrian using diamond square algorithm
 		*/
-		void diamondSquare() {
-			HeightMap heightMap(257);
-			heightMap.diamondSquare();
+		void generateTerrain() {
+			int n = static_cast<int>(ceilf(log2f(worldSize * worldSize)));
+			int mapSize = pow(2, n) + 1;
+			HeightMap heightMap(mapSize);
+			heightMap.generate();
 
 			int terrainHeight = Chunk::CHUNK_SIZE / 2 * worldHeight;
 			for (int cz = 0; cz < worldSize; cz++) {
@@ -407,7 +446,13 @@ namespace blok {
 		}
 
 		Chunk* getChunk(int x, int y, int z) {
+			if (x < 0 || y < 0 || z < 0) {
+				return nullptr;
+			}
 			int index = (y * worldSize * worldSize) + (x * worldSize) + z;
+			if (index < 0 || index >= activeList.size()) {
+				return nullptr;
+			}
 			return activeList[index];
 		}
 
