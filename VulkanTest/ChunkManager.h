@@ -14,6 +14,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <functional>
+#include <optional>
 #include <cstdlib>
 #include <vector>
 #include <queue>
@@ -373,7 +374,7 @@ namespace blok {
 			std::cout << "Vertex Count: " << mesh.vertices.size() << ", Triangles: " << mesh.indices.size() / 3 << std::endl;
 		}
 
-		Block* getBlockAt(glm::vec3 position) {
+		std::optional<Block> getBlockAt(glm::vec3 position) {
 			float chunkRenderSize = CUBE_SIZE * Chunk::CHUNK_SIZE;
 			int cx = position.x / chunkRenderSize;
 			int cy = position.y / chunkRenderSize + worldHeight;
@@ -381,7 +382,7 @@ namespace blok {
 
 			Chunk* chunk = getChunk(cx, cy, cz);
 			if (chunk == nullptr) {
-				return nullptr;
+				return {};
 			}
 			float xOffset = chunkRenderSize * cx;
 			float yOffset = chunkRenderSize * (cy - worldHeight);
@@ -390,13 +391,11 @@ namespace blok {
 			int bx = (position.x - xOffset) / CUBE_SIZE;
 			int by = (position.y - yOffset) / CUBE_SIZE;
 			int bz = -(position.z - zOffset) / CUBE_SIZE;
-			std::cout << "World (" << position.x << ", " << position.y << ", " << position.z << ") -> Chunk(" << cx << ", " << cy << ", " << cz << ") Block(" << bx << ", " << by << ", " << bz << ")" << std::endl;
+			//std::cout << "World (" << position.x << ", " << position.y << ", " << position.z << ") -> Chunk(" << cx << ", " << cy << ", " << cz << ") Block(" << bx << ", " << by << ", " << bz << ")" << std::endl;
 			if (bx < 0 || by < 0 || bz < 0 || bx >= Chunk::CHUNK_SIZE || by >= Chunk::CHUNK_SIZE || bz >= Chunk::CHUNK_SIZE) {
-				return nullptr;
+				return {};
 			}
-			Block* b = new Block();  
-			*b = chunk->getBlock(bx, by, bz);
-			return b;
+			return std::optional<Block>{chunk->getBlock(bx, by, bz)};
 		}
 
 	private:
