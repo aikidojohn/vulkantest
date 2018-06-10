@@ -122,6 +122,23 @@ namespace blok {
 			playerPos = { cameraPos.x, cameraPos.y - 1, cameraPos.z };
 		}
 
+		glm::vec3 getCorrection(std::optional<Block> block, glm::vec3 pos, glm::vec3 dv) {
+			float d = 1;
+			if (abs(dv.z) > abs(dv.x)) {//moving toward z face
+				d = dv.z < 0  ? (block->z - pos.z) / dv.z : (block->z - pos.z - Block::CUBE_SIZE) / dv.z;
+				//float d1 = (block->z - pos.z) / dv.z;
+				//float d2 = (block->z - pos.z - Block::CUBE_SIZE) / dv.z;
+			}
+			else { //moving woard x face
+				d = dv.x < 0 ? (block->x - pos.x + Block::CUBE_SIZE) / dv.x : (block->x - pos.x) / dv.x;
+				//float d4 = (block->x - pos.x) / dv.x;
+				//float d3 = (block->x - pos.x + Block::CUBE_SIZE) / dv.x;
+			}
+			glm::vec3 newPos = d * dv + pos;
+			glm::vec3 posDelta = newPos - pos;
+			return posDelta;
+		}
+
 		void updateCamera() {
 			static auto startTime = std::chrono::high_resolution_clock::now();
 			auto currentTime = std::chrono::high_resolution_clock::now();
@@ -139,26 +156,13 @@ namespace blok {
 			if (block.has_value()) {
 				if (block->isActive()) {
 					float playerDeltaY = playerPos.y - (block->y + CUBE_SIZE);
-					float playerDeltaX = playerPos.x - (block->x + CUBE_SIZE);
-					float playerDeltaZ = playerPos.z - block->z;
 					glm::vec3  right = normalize(glm::cross(playerFront, cameraUp));
-					glm::vec3  left = normalize(glm::cross(playerFront, glm::vec3(0.0f, -1.0f, 0.0f)));
 					if (direction.y < 0 && playerDeltaY < 0) {
 						std::cout << "Player y Pos: " << playerPos.y << " < " << block->y + CUBE_SIZE << " delta : " << playerDeltaY << std::endl;
 						direction.y = 0;
 						playerPos.y = block->y + CUBE_SIZE;
 						cameraPos.y = playerPos.y + 1;
 					}
-					/*if (direction.x < 0 && playerDeltaX < 0) {
-						std::cout << "Player x Pos: " << playerPos.x << " < " << block->x + CUBE_SIZE << " delta : " << playerDeltaX << std::endl;
-						direction.x = 0;
-						playerPos.x = block->x + CUBE_SIZE;
-						cameraPos.x = playerPos.x;
-					//	glm::vec3  norm = normalize(glm::cross(playerFront, cameraUp));
-					//	float newX = (block->x + CUBE_SIZE - cameraPos.x) / norm.x;
-					//	updateCamera(newX, 0, 0);
-						std::cout << "New Player x Pos: " << playerPos.x << std::endl;
-					}*/
 					/*
 					The playerFront is a unit vector representing the direction the player is facing. If we imagine taking the dot product
 					of the player facing and each cube face normal, we will have a measure of how similar the two directions are. Since the normals are
@@ -166,126 +170,20 @@ namespace blok {
 					(the dot product will just zero out the other components). So to figure out if the player is facing mostly in the x or z position,
 					check the magnitude of the x and z components. The larger magnitued is the axis the player is aligned with.
 					*/
-					if (direction.x != 0 ||  direction.y != 0 || direction.z != 0) 
+					if (direction.x != 0 || direction.y != 0 || direction.z != 0) {
 						std::cout << "Player Pos: " << glm::to_string(playerPos) << " block: " << glm::to_string(glm::vec3(block->x, block->y, block->z)) << " direction: " << glm::to_string(direction) << " facing: " << glm::to_string(playerFront) << std::endl;
 
-					//Line-Plane intersection equation https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
-					//This will give a point on the block face to move the player to.
-					//get block face normal based on direction player is facing
-					//glm::vec3 n = playerFront.x > 0 ? glm::vec3(-1, 0, 0) : glm::vec3(1, 0, 0);
-					//float d = glm::dot(glm::vec3(block->x, block->y, block->z) - playerPos, n) / glm::dot(playerFront, n);
+						//Line-Plane intersection equation https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
+						//This will give a point on the block face to move the player to.
 
-
-					if (fabs(playerFront.z) >= 0.5f) { //Player facing Z direction
-						if ((direction.z > 0 && playerFront.z < 0) || (direction.z < 0 && playerFront.z > 0)) {
-							direction.z = 0;
-							//playerPos.z = block->z;
-							//cameraPos.z = playerPos.z;
-							//float newZ = (block->z - cameraPos.z) / playerFront.z;
-							//updateCamera(0, 0, newZ);
-							float d = (block->z - playerPos.z) / playerFront.z;
-							playerPos = d * playerFront + playerPos;
-							cameraPos.x = playerPos.x;
-							cameraPos.z = playerPos.z;
-							std::cout << "1 New Player z Pos: " << playerPos.z << std::endl;
-						}
-
-						if ((direction.z > 0 && playerFront.z > 0) || (direction.z < 0 && playerFront.z < 0)) {
-							direction.z = 0;
-							//playerPos.z = block->z - CUBE_SIZE;
-							//cameraPos.z = playerPos.z;
-							//float newZ = (block->z - cameraPos.z - CUBE_SIZE) / playerFront.z;
-							//updateCamera(0, 0, newZ);
-							float d = (block->z - playerPos.z - CUBE_SIZE) / playerFront.z;
-							playerPos = d * playerFront + playerPos;
-							cameraPos.x = playerPos.x;
-							cameraPos.z = playerPos.z;
-							std::cout << "2 New Player z Pos: " << playerPos.z << std::endl;
-						}
-
-						if ((direction.x > 0 && playerFront.z > 0) || (direction.x < 0 && playerFront.z < 0)) {
-							direction.x = 0;
-							//playerPos.x = block->x + CUBE_SIZE;
-							//cameraPos.x = playerPos.x;
-							//float newX = (block->x + CUBE_SIZE - cameraPos.x) / right.x;
-							//updateCamera(newX, 0, 0);
-							float d = (block->x + CUBE_SIZE - playerPos.x) / right.x;
-							playerPos = d * right + playerPos;
-							cameraPos.x = playerPos.x;
-							cameraPos.z = playerPos.z;
-							std::cout << "3 New Player x Pos: " << playerPos.x << std::endl;
-						}
-
-						if ((direction.x > 0 && playerFront.z < 0) || (direction.x < 0 && playerFront.z > 0)) {
-							direction.x = 0;
-							//playerPos.x = block->x;
-							//cameraPos.x = playerPos.x;
-							//float newX = (block->x - cameraPos.x) / right.x;
-							//updateCamera(newX, 0, 0);
-							float d = (block->x - playerPos.x) / right.x;
-							playerPos = d * right + playerPos;
-							cameraPos.x = playerPos.x;
-							cameraPos.z = playerPos.z;
-							std::cout << "4 New Player x Pos: " << playerPos.x << std::endl;
-						}
-						std::cout << "New Player Pos: " << glm::to_string(playerPos) << std::endl;
-					}
-					else { //Player facing X direction
-						if ((direction.z > 0 && playerFront.x < 0) || (direction.z < 0 && playerFront.x > 0)) {
-							direction.z = 0;
-							//playerPos.x = block->x + CUBE_SIZE;
-							//cameraPos.x = playerPos.x;
-							//float newX = (block->x + CUBE_SIZE - cameraPos.x) / right.x;
-							//updateCamera(newX, 0, 0);
-							float d = (block->x + CUBE_SIZE - playerPos.x) / playerFront.x;
-							playerPos = d * playerFront + playerPos;
-							cameraPos.x = playerPos.x;
-							cameraPos.z = playerPos.z;
-							std::cout << "5 New Player x Pos: " << playerPos.x << std::endl;
-						}
-
-						if ((direction.z > 0 && playerFront.x > 0) || (direction.z < 0 && playerFront.x < 0)) {
-							direction.z = 0;
-							//playerPos.x = block->x;
-							//cameraPos.x = playerPos.x;
-							//float newX = (block->x - cameraPos.x) / right.x;
-							//updateCamera(newX, 0, 0);
-							float d = (block->x - playerPos.x) / playerFront.x;
-							playerPos = d * playerFront + playerPos;
-							cameraPos.x = playerPos.x;
-							cameraPos.z = playerPos.z;
-							std::cout << "6 New Player x Pos: " << playerPos.x << std::endl;
-						}
-
-						if ((direction.x > 0 && playerFront.x < 0) || (direction.x < 0 && playerFront.x > 0)) {
-							direction.x = 0;
-							//playerPos.z = block->z;
-							//cameraPos.z = playerPos.z;
-							//float newZ = (block->z - cameraPos.z) / playerFront.z;
-							//updateCamera(0, 0, newZ);
-							float d = (block->z - playerPos.z) / right.z;
-							playerPos = d * right + playerPos;
-							cameraPos.x = playerPos.x;
-							cameraPos.z = playerPos.z;
-							std::cout << "7 New Player z Pos: " << playerPos.z << std::endl;
-						}
-
-						if ((direction.x > 0 && playerFront.x > 0) || (direction.x < 0 && playerFront.x < 0)) {
-							direction.x = 0;
-							//playerPos.z = block->z - CUBE_SIZE;
-							//cameraPos.z = playerPos.z;
-							//float newZ = (block->z - cameraPos.z - CUBE_SIZE) / playerFront.z;
-							//updateCamera(0, 0, newZ);
-							float d = (block->z - playerPos.z - CUBE_SIZE) / right.z;
-							playerPos = d * right + playerPos;
-							cameraPos.x = playerPos.x;
-							cameraPos.z = playerPos.z;
-							std::cout << "8 New Player z Pos: " << playerPos.z << std::endl;
-						}
-						std::cout << "New Player Pos: " << glm::to_string(playerPos) << std::endl;
-					}
-
-					
+						glm::vec3 dv = direction.z != 0 ? playerFront * direction.z : right * direction.x;
+						glm::vec3 posDelta = getCorrection(block, playerPos, dv);
+						glm::vec3 newPlayerPos = playerPos + posDelta;
+						playerPos.x = playerPos.x + posDelta.x;
+						playerPos.z = playerPos.z + posDelta.z;
+						cameraPos.x = playerPos.x;
+						cameraPos.z = playerPos.z;
+					}					
 				}
 			}
 		}

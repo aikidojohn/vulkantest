@@ -68,6 +68,7 @@ namespace blok {
 		bool mActive = true;
 
 	public:
+		static constexpr float CUBE_SIZE = 0.25f;
 		float x;
 		float y;
 		float z;
