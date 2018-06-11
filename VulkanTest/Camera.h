@@ -20,7 +20,7 @@ namespace blok {
 	class Camera {
 	public:
 		float Zoom = 45.0f;
-		float Speed = 3.5f;
+		float Speed = 7.0f;
 		float Sensitivity = 0.05f;
 
 		Camera(Player& aPlayer, World& aWorld) : player(aPlayer), world(aWorld) {
@@ -78,6 +78,11 @@ namespace blok {
 			direction.z = z;
 			//std::cout << "direction " << glm::to_string(direction) << std::endl;
 		}
+		void onJumpKey() {
+			isJumping = !isJumping;
+			flightTime = 0;
+			direction.y = -1;
+		}
 
 	private:
 		Player& player;
@@ -91,6 +96,9 @@ namespace blok {
 		float yaw = -90;
 		float pitch = 0;
 		glm::vec3 direction = glm::vec3(0.0f, 0.0f, 0.0f);
+		float jumpVelocity = 4.0f;
+		bool isJumping = false;
+		float flightTime = 0;
 
 		void updateFrontVectors() {
 			//fix the player y position so player doesn't move toward y when looking up or down. Lock player in y plane until y is moved.
@@ -126,13 +134,9 @@ namespace blok {
 			float d = 1;
 			if (abs(dv.z) > abs(dv.x)) {//moving toward z face
 				d = dv.z < 0  ? (block->z - pos.z) / dv.z : (block->z - pos.z - Block::CUBE_SIZE) / dv.z;
-				//float d1 = (block->z - pos.z) / dv.z;
-				//float d2 = (block->z - pos.z - Block::CUBE_SIZE) / dv.z;
 			}
 			else { //moving woard x face
 				d = dv.x < 0 ? (block->x - pos.x + Block::CUBE_SIZE) / dv.x : (block->x - pos.x) / dv.x;
-				//float d4 = (block->x - pos.x) / dv.x;
-				//float d3 = (block->x - pos.x + Block::CUBE_SIZE) / dv.x;
 			}
 			glm::vec3 newPos = d * dv + pos;
 			glm::vec3 posDelta = newPos - pos;
@@ -148,6 +152,16 @@ namespace blok {
 			float dx = Speed * timeDelta * direction.x;
 			float dy = Speed * timeDelta * direction.y;
 			float dz = Speed * timeDelta * direction.z;
+			if (isJumping) {
+				flightTime += timeDelta;
+				float dg = World::GRAVITY * flightTime * flightTime * 0.5;
+				if (dg > World::TERMINAL_VELOCITY) {
+					dg = World::TERMINAL_VELOCITY;
+				}
+				float dp = jumpVelocity * timeDelta;
+				dy = (dp - dg);
+				std::cout << "Jump " << dg << ", " << dp << ", " << dy << std::endl;
+			}
 			//std::cout << glm::to_string(playerFront) << std::endl;
 			updateCamera(dx, dy, dz);
 
@@ -162,6 +176,9 @@ namespace blok {
 						direction.y = 0;
 						playerPos.y = block->y + CUBE_SIZE;
 						cameraPos.y = playerPos.y + 1;
+						if (isJumping) {
+							isJumping = false;
+						}
 					}
 					/*
 					The playerFront is a unit vector representing the direction the player is facing. If we imagine taking the dot product
@@ -179,10 +196,12 @@ namespace blok {
 						glm::vec3 dv = direction.z != 0 ? playerFront * direction.z : right * direction.x;
 						glm::vec3 posDelta = getCorrection(block, playerPos, dv);
 						glm::vec3 newPlayerPos = playerPos + posDelta;
-						playerPos.x = playerPos.x + posDelta.x;
-						playerPos.z = playerPos.z + posDelta.z;
-						cameraPos.x = playerPos.x;
-						cameraPos.z = playerPos.z;
+						if (abs(posDelta.x) < Block::CUBE_SIZE && abs(posDelta.y) < Block::CUBE_SIZE && abs(posDelta.z) < Block::CUBE_SIZE) { //Prevent teleporation Kyle! (why does this happen?)
+							playerPos.x = playerPos.x + posDelta.x;
+							playerPos.z = playerPos.z + posDelta.z;
+							cameraPos.x = playerPos.x;
+							cameraPos.z = playerPos.z;
+						}
 					}					
 				}
 			}

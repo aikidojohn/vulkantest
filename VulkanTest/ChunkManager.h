@@ -68,7 +68,7 @@ namespace blok {
 		bool mActive = true;
 
 	public:
-		static constexpr float CUBE_SIZE = 0.25f;
+		static constexpr float CUBE_SIZE = 1.0f;
 		float x;
 		float y;
 		float z;
@@ -81,7 +81,7 @@ namespace blok {
 		}
 	};
 	
-	static const float CUBE_SIZE = 0.25f;
+	static const float CUBE_SIZE = 1.0f;
 	class Chunk {
 	public:
 		static const int CHUNK_SIZE = 16;
@@ -360,13 +360,14 @@ namespace blok {
 		void render() {
 			generateTerrain();
 			float chunkRenderSize = CUBE_SIZE * Chunk::CHUNK_SIZE;
+			float offset = worldSize / 2 * chunkRenderSize;
 			for (int cz = 0; cz < worldSize; cz++) {
 				for (int cx = 0; cx < worldSize; cx++) {
 					for (int cy = 0; cy < worldHeight; cy++) {
 						int chunkIndex = cx + cy * worldHeight + cz * worldSize * worldHeight;
-						float xOffset = chunkRenderSize * cx;
+						float xOffset = chunkRenderSize * cx - offset;
 						float yOffset = chunkRenderSize * (cy - worldHeight);
-						float zOffset = chunkRenderSize  *-cz;
+						float zOffset = chunkRenderSize  *-cz + offset;
 						Chunk* chunk = getChunk(cx, cy, cz);
 						chunk->render(mesh, xOffset, yOffset, zOffset);
 					}
@@ -377,17 +378,18 @@ namespace blok {
 
 		std::optional<Block> getBlockAt(glm::vec3 position) {
 			float chunkRenderSize = CUBE_SIZE * Chunk::CHUNK_SIZE;
-			int cx = position.x / chunkRenderSize;
+			float offset = worldSize / 2 * chunkRenderSize;
+			int cx = (position.x + offset) / chunkRenderSize;
 			int cy = position.y / chunkRenderSize + worldHeight;
-			int cz = -1.0 * position.z / chunkRenderSize;
+			int cz = ((-1.0 * position.z) + offset) / chunkRenderSize;
 
 			Chunk* chunk = getChunk(cx, cy, cz);
 			if (chunk == nullptr) {
 				return {};
 			}
-			float xOffset = chunkRenderSize * cx;
+			float xOffset = chunkRenderSize * cx -offset;
 			float yOffset = chunkRenderSize * (cy - worldHeight);
-			float zOffset = chunkRenderSize * -cz;
+			float zOffset = chunkRenderSize * -cz + offset;
 
 			int bx = (position.x - xOffset) / CUBE_SIZE;
 			int by = (position.y - yOffset) / CUBE_SIZE;

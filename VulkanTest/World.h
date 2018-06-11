@@ -12,6 +12,8 @@
 namespace blok {
 	class World {
 	public:
+		static constexpr float GRAVITY = 2.0f;
+		static constexpr float TERMINAL_VELOCITY = 5.0f;
 
 		std::optional<Block> getBlockAt(glm::vec3 position) {
 			return chunkManager.getBlockAt(position);
