@@ -12,11 +12,15 @@
 namespace blok {
 	class World {
 	public:
-		static constexpr float GRAVITY = 2.0f;
-		static constexpr float TERMINAL_VELOCITY = 5.0f;
+		static constexpr float GRAVITY = 0.1f;
+		static constexpr float TERMINAL_VELOCITY = 0.25f;
 
 		std::optional<Block> getBlockAt(glm::vec3 position) {
 			return chunkManager.getBlockAt(position);
+		}
+
+		std::optional<Block> getBlockAt(float x, float y, float z) {
+			return chunkManager.getBlockAt({ x, y, z });
 		}
 
 		const Mesh<Vertex>* getMesh() {

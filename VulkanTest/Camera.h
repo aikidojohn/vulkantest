@@ -14,6 +14,7 @@
 #include "ChunkManager.h"
 #include "Player.h"
 #include "World.h"
+#include "Floats.h"
 
 namespace blok {
 
@@ -81,7 +82,7 @@ namespace blok {
 		void onJumpKey() {
 			isJumping = !isJumping;
 			flightTime = 0;
-			direction.y = -1;
+			direction.y = -1.0f;
 		}
 
 	private:
@@ -96,8 +97,9 @@ namespace blok {
 		float yaw = -90;
 		float pitch = 0;
 		glm::vec3 direction = glm::vec3(0.0f, 0.0f, 0.0f);
-		float jumpVelocity = 4.0f;
+		float jumpVelocity = 2.0f;
 		bool isJumping = false;
+		bool isInAir = true;
 		float flightTime = 0;
 
 		void updateFrontVectors() {
@@ -152,15 +154,17 @@ namespace blok {
 			float dx = Speed * timeDelta * direction.x;
 			float dy = Speed * timeDelta * direction.y;
 			float dz = Speed * timeDelta * direction.z;
-			if (isJumping) {
+
+			//Gravity calculations
+			if (isInAir) {
 				flightTime += timeDelta;
 				float dg = World::GRAVITY * flightTime * flightTime * 0.5;
 				if (dg > World::TERMINAL_VELOCITY) {
 					dg = World::TERMINAL_VELOCITY;
 				}
-				float dp = jumpVelocity * timeDelta;
+				float dp = isJumping ? jumpVelocity * timeDelta : 0.0f;
 				dy = (dp - dg);
-				std::cout << "Jump " << dg << ", " << dp << ", " << dy << std::endl;
+				std::cout << "In Air " << dg << ", " << dp << ", " << dy << std::endl;
 			}
 			//std::cout << glm::to_string(playerFront) << std::endl;
 			updateCamera(dx, dy, dz);
@@ -168,17 +172,21 @@ namespace blok {
 			//Collision Detecton
 			std::optional<Block> block = world.getBlockAt(playerPos);
 			if (block.has_value()) {
+				//determine if the player is standing on terrain. If the block below the current colliding block has a top y = player y and it is active, player is standing on the block.
+				std::optional<Block> blockBelow = world.getBlockAt(playerPos.x, playerPos.y - Block::CUBE_SIZE, playerPos.z);
+				bool onTerrain = blockBelow->isActive() && !block->isActive() ? floats::almostEqual(blockBelow->y + Block::CUBE_SIZE, playerPos.y) : false;
 				if (block->isActive()) {
-					float playerDeltaY = playerPos.y - (block->y + CUBE_SIZE);
+					float playerDeltaY = playerPos.y - (block->y + Block::CUBE_SIZE);
 					glm::vec3  right = normalize(glm::cross(playerFront, cameraUp));
-					if (direction.y < 0 && playerDeltaY < 0) {
-						std::cout << "Player y Pos: " << playerPos.y << " < " << block->y + CUBE_SIZE << " delta : " << playerDeltaY << std::endl;
-						direction.y = 0;
-						playerPos.y = block->y + CUBE_SIZE;
-						cameraPos.y = playerPos.y + 1;
+					if (playerDeltaY < 0.0f /*&& abs(playerDeltaY) > 0.00001f*/) {
+						std::cout << "Player y Pos: " << playerPos.y << " < " << block->y + Block::CUBE_SIZE << " delta : " << playerDeltaY << std::endl;
+						direction.y = 0.0f;
+						playerPos.y = block->y + Block::CUBE_SIZE;
+						cameraPos.y = playerPos.y + Block::CUBE_SIZE;
 						if (isJumping) {
 							isJumping = false;
 						}
+						isInAir = false;
 					}
 					/*
 					The playerFront is a unit vector representing the direction the player is facing. If we imagine taking the dot product
@@ -202,7 +210,22 @@ namespace blok {
 							cameraPos.x = playerPos.x;
 							cameraPos.z = playerPos.z;
 						}
-					}					
+					}
+					isInAir = false;
+				}
+				else {
+					if (!onTerrain && !isInAir) {
+						isInAir = true;
+						flightTime = 0;
+						direction.y = -1.0f;
+					}
+				}
+			}
+			else {
+				if (!isInAir) {
+					isInAir = true;
+					flightTime = 0;
+					direction.y = -1.0f;
 				}
 			}
 		}

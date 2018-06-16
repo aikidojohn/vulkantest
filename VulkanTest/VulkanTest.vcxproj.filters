@@ -47,5 +47,8 @@
     <ClInclude Include="World.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Floats.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
