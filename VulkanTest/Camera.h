@@ -80,9 +80,15 @@ namespace blok {
 			//std::cout << "direction " << glm::to_string(direction) << std::endl;
 		}
 		void onJumpKey() {
-			isJumping = !isJumping;
-			flightTime = 0;
-			direction.y = -1.0f;
+			if (!isInAir && !isJumping) {
+				isJumping = true;
+				flightTime = 0;
+				direction.y = -1.0f;
+			}
+		}
+
+		void setFlying(bool flightMode) {
+			this->flightMode = flightMode;
 		}
 
 	private:
@@ -97,10 +103,11 @@ namespace blok {
 		float yaw = -90;
 		float pitch = 0;
 		glm::vec3 direction = glm::vec3(0.0f, 0.0f, 0.0f);
-		float jumpVelocity = 2.0f;
+		float jumpVelocity = 4.0f;
 		bool isJumping = false;
 		bool isInAir = true;
 		float flightTime = 0;
+		bool flightMode = false;
 
 		void updateFrontVectors() {
 			//fix the player y position so player doesn't move toward y when looking up or down. Lock player in y plane until y is moved.
@@ -156,7 +163,7 @@ namespace blok {
 			float dz = Speed * timeDelta * direction.z;
 
 			//Gravity calculations
-			if (isInAir) {
+			if (!flightMode && (isInAir || isJumping)) {
 				flightTime += timeDelta;
 				float dg = World::GRAVITY * flightTime * flightTime * 0.5;
 				if (dg > World::TERMINAL_VELOCITY) {
@@ -178,7 +185,7 @@ namespace blok {
 				if (block->isActive()) {
 					float playerDeltaY = playerPos.y - (block->y + Block::CUBE_SIZE);
 					glm::vec3  right = normalize(glm::cross(playerFront, cameraUp));
-					if (playerDeltaY < 0.0f /*&& abs(playerDeltaY) > 0.00001f*/) {
+					if (playerDeltaY < 0.0f) {
 						std::cout << "Player y Pos: " << playerPos.y << " < " << block->y + Block::CUBE_SIZE << " delta : " << playerDeltaY << std::endl;
 						direction.y = 0.0f;
 						playerPos.y = block->y + Block::CUBE_SIZE;
@@ -211,10 +218,10 @@ namespace blok {
 							cameraPos.z = playerPos.z;
 						}
 					}
-					isInAir = false;
+					//isInAir = false;
 				}
 				else {
-					if (!onTerrain && !isInAir) {
+					if (!onTerrain && !isInAir && !flightMode) {
 						isInAir = true;
 						flightTime = 0;
 						direction.y = -1.0f;
@@ -222,7 +229,7 @@ namespace blok {
 				}
 			}
 			else {
-				if (!isInAir) {
+				if (!isInAir && !flightMode) {
 					isInAir = true;
 					flightTime = 0;
 					direction.y = -1.0f;
