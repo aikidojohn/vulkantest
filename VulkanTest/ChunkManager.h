@@ -418,7 +418,9 @@ namespace blok {
 			HeightMap heightMap(mapSize);
 			heightMap.generate();
 
-			int terrainHeight = Chunk::CHUNK_SIZE / 2 * worldHeight;
+			//int terrainHeight = Chunk::CHUNK_SIZE / 2 * worldHeight;
+			int terrainHeight = Chunk::CHUNK_SIZE * 3 / 2;
+			int minTerrainHeight = Chunk::CHUNK_SIZE * 4;
 			for (int cz = 0; cz < worldSize; cz++) {
 				for (int cx = 0; cx < worldSize; cx++) {
 					for (int cy = 0; cy < worldHeight; cy++) {
@@ -426,7 +428,7 @@ namespace blok {
 						for (int z = 0; z < Chunk::CHUNK_SIZE; z++) {
 							for (int x = 0; x < Chunk::CHUNK_SIZE; x++) {
 								double yscale = heightMap.get(cx*Chunk::CHUNK_SIZE + x, cz * Chunk::CHUNK_SIZE + z);
-								int maxY = clamp(terrainHeight * yscale, -terrainHeight, terrainHeight) + terrainHeight;
+								int maxY = clamp(terrainHeight * yscale, -terrainHeight, terrainHeight) + terrainHeight + minTerrainHeight;
 								int minCy = maxY / Chunk::CHUNK_SIZE;
 								int startY = 0; //default to setting whole chunk to air
 								if (cy == minCy) {

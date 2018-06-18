@@ -103,7 +103,7 @@ namespace blok {
 		float yaw = -90;
 		float pitch = 0;
 		glm::vec3 direction = glm::vec3(0.0f, 0.0f, 0.0f);
-		float jumpVelocity = 4.0f;
+		float jumpVelocity = 8.0f;
 		bool isJumping = false;
 		bool isInAir = true;
 		float flightTime = 0;
@@ -165,7 +165,7 @@ namespace blok {
 			//Gravity calculations
 			if (!flightMode && (isInAir || isJumping)) {
 				flightTime += timeDelta;
-				float dg = World::GRAVITY * flightTime * flightTime * 0.5;
+				float dg = World::GRAVITY * flightTime * flightTime * 0.5f;
 				if (dg > World::TERMINAL_VELOCITY) {
 					dg = World::TERMINAL_VELOCITY;
 				}
@@ -183,9 +183,10 @@ namespace blok {
 				std::optional<Block> blockBelow = world.getBlockAt(playerPos.x, playerPos.y - Block::CUBE_SIZE, playerPos.z);
 				bool onTerrain = blockBelow->isActive() && !block->isActive() ? floats::almostEqual(blockBelow->y + Block::CUBE_SIZE, playerPos.y) : false;
 				if (block->isActive()) {
+
+					//Downward Y collision correction
 					float playerDeltaY = playerPos.y - (block->y + Block::CUBE_SIZE);
-					glm::vec3  right = normalize(glm::cross(playerFront, cameraUp));
-					if (playerDeltaY < 0.0f) {
+					if ((isInAir || isJumping) && playerDeltaY < 0.0f) {
 						std::cout << "Player y Pos: " << playerPos.y << " < " << block->y + Block::CUBE_SIZE << " delta : " << playerDeltaY << std::endl;
 						direction.y = 0.0f;
 						playerPos.y = block->y + Block::CUBE_SIZE;
@@ -195,6 +196,7 @@ namespace blok {
 						}
 						isInAir = false;
 					}
+
 					/*
 					The playerFront is a unit vector representing the direction the player is facing. If we imagine taking the dot product
 					of the player facing and each cube face normal, we will have a measure of how similar the two directions are. Since the normals are
@@ -207,15 +209,26 @@ namespace blok {
 
 						//Line-Plane intersection equation https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
 						//This will give a point on the block face to move the player to.
-
+						glm::vec3  right = normalize(glm::cross(playerFront, cameraUp));
 						glm::vec3 dv = direction.z != 0 ? playerFront * direction.z : right * direction.x;
 						glm::vec3 posDelta = getCorrection(block, playerPos, dv);
 						glm::vec3 newPlayerPos = playerPos + posDelta;
-						if (abs(posDelta.x) < Block::CUBE_SIZE && abs(posDelta.y) < Block::CUBE_SIZE && abs(posDelta.z) < Block::CUBE_SIZE) { //Prevent teleporation Kyle! (why does this happen?)
+						std::optional<Block> newBlock = world.getBlockAt(newPlayerPos);
+						if (newBlock.has_value() && newBlock->isActive() && floats::almostEqual(newBlock->z + 1, block->z)) {
 							playerPos.x = playerPos.x + posDelta.x;
-							playerPos.z = playerPos.z + posDelta.z;
+							//playerPos.z = playerPos.z + posDelta.z;
 							cameraPos.x = playerPos.x;
-							cameraPos.z = playerPos.z;
+							//cameraPos.z = playerPos.z;
+							std::cout << "New Player Pos: " << glm::to_string(playerPos) << std::endl;
+						}
+						else {
+							if (abs(posDelta.x) < Block::CUBE_SIZE && abs(posDelta.y) < Block::CUBE_SIZE && abs(posDelta.z) < Block::CUBE_SIZE) { //Prevent teleporation Kyle! (why does this happen?)
+								playerPos.x = playerPos.x + posDelta.x;
+								playerPos.z = playerPos.z + posDelta.z;
+								cameraPos.x = playerPos.x;
+								cameraPos.z = playerPos.z;
+								std::cout << "New Player Pos: " << glm::to_string(playerPos) << std::endl;
+							}
 						}
 					}
 					//isInAir = false;
