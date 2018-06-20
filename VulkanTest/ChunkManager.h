@@ -114,6 +114,13 @@ namespace blok {
 			return mBlocks[x][y][z];
 		}
 
+		Block getBlock(float x, float y, float z) {
+			return getBlock(static_cast<int>(x)
+				,static_cast<int>(y)
+				,static_cast<int>(z)
+			);
+		}
+
 		void render(Mesh<Vertex> &mesh, float xOffset, float yOffset, float zOffset) {
 			static std::mt19937 engine;
 			static std::uniform_int_distribution<> dist(3, 3);
@@ -152,7 +159,11 @@ namespace blok {
 							if (y < CHUNK_SIZE - 1)
 								renderBottom = !mBlocks[x][y+1][z].isActive();
 
-							renderBlock(mesh, x * cubeSize + xOffset, y * cubeSize + yOffset, z * -cubeSize + zOffset, /*dist(engine)*/y % 3, cubeSize, renderLeft, renderFront, renderRight, renderBack, renderTop, renderBottom);
+							renderBlock(mesh
+								,static_cast<float>(x) * cubeSize + xOffset
+								,static_cast<float>(y) * cubeSize + yOffset
+								,static_cast<float>(z) * -cubeSize + zOffset
+								, static_cast<float>(y % 3), cubeSize, renderLeft, renderFront, renderRight, renderBack, renderTop, renderBottom);
 							//renderBlock(mesh, x * cubeSize + xOffset, y * cubeSize + yOffset, z * -cubeSize + zOffset, rand() % 2, cubeSize, true, true, true, true, true, true);
 						}
 					}
@@ -359,15 +370,18 @@ namespace blok {
 
 		void render() {
 			generateTerrain();
-			float chunkRenderSize = CUBE_SIZE * Chunk::CHUNK_SIZE;
-			float offset = worldSize / 2 * chunkRenderSize;
+			float chunkRenderSize = Chunk::CHUNK_SIZE;
+			//float offset = worldSize / 2 * chunkRenderSize;
+			//float offset = static_cast<float>(worldSize) * chunkRenderSize / 2.0f;
+			float offset = 0.0f;
 			for (int cz = 0; cz < worldSize; cz++) {
 				for (int cx = 0; cx < worldSize; cx++) {
 					for (int cy = 0; cy < worldHeight; cy++) {
-						int chunkIndex = cx + cy * worldHeight + cz * worldSize * worldHeight;
 						float xOffset = chunkRenderSize * cx - offset;
-						float yOffset = chunkRenderSize * (cy - worldHeight);
+						//float yOffset = chunkRenderSize * (cy - worldHeight);
+						float yOffset = chunkRenderSize * cy;
 						float zOffset = chunkRenderSize  *-cz + offset;
+						//std::cout << "Rendering chunk at " << glm::to_string(glm::vec3(xOffset, yOffset, zOffset)) << std::endl;
 						Chunk* chunk = getChunk(cx, cy, cz);
 						chunk->render(mesh, xOffset, yOffset, zOffset);
 					}
@@ -377,24 +391,27 @@ namespace blok {
 		}
 
 		std::optional<Block> getBlockAt(glm::vec3 position) {
-			float chunkRenderSize = CUBE_SIZE * Chunk::CHUNK_SIZE;
-			float offset = worldSize / 2 * chunkRenderSize;
-			int cx = (position.x + offset) / chunkRenderSize;
-			int cy = position.y / chunkRenderSize + worldHeight;
-			int cz = ((-1.0 * position.z) + offset) / chunkRenderSize;
+			float chunkRenderSize = Chunk::CHUNK_SIZE;
+			//float offset = static_cast<float>(worldSize) * chunkRenderSize / 2.0f;
+			float offset = 0.0f;
+			float cx = floorf((position.x + offset) / chunkRenderSize);
+			//float cy = position.y / chunkRenderSize + worldHeight;
+			float cy = floorf(position.y / chunkRenderSize);
+			float cz = floorf(-1.0f * ((position.z - offset) / chunkRenderSize));
 
 			Chunk* chunk = getChunk(cx, cy, cz);
 			if (chunk == nullptr) {
 				return {};
 			}
-			float xOffset = chunkRenderSize * cx -offset;
-			float yOffset = chunkRenderSize * (cy - worldHeight);
+			float xOffset = chunkRenderSize * cx - offset;
+			//float yOffset = chunkRenderSize * (cy - worldHeight);
+			float yOffset = chunkRenderSize * cy;
 			float zOffset = chunkRenderSize * -cz + offset;
 
-			int bx = (position.x - xOffset) / CUBE_SIZE;
-			int by = (position.y - yOffset) / CUBE_SIZE;
-			int bz = -(position.z - zOffset) / CUBE_SIZE;
-			//std::cout << "World (" << position.x << ", " << position.y << ", " << position.z << ") -> Chunk(" << cx << ", " << cy << ", " << cz << ") Block(" << bx << ", " << by << ", " << bz << ")" << std::endl;
+			float bx = floorf(position.x - xOffset);
+			float by = floorf(position.y - yOffset);
+			float bz = floorf (-(position.z - zOffset));
+			std::cout << "World (" << position.x << ", " << position.y << ", " << position.z << ") -> Chunk(" << cx << ", " << cy << ", " << cz << ") Block(" << bx << ", " << by << ", " << bz << ")" << std::endl;
 			if (bx < 0 || by < 0 || bz < 0 || bx >= Chunk::CHUNK_SIZE || by >= Chunk::CHUNK_SIZE || bz >= Chunk::CHUNK_SIZE) {
 				return {};
 			}
@@ -402,7 +419,7 @@ namespace blok {
 		}
 
 	private:
-		int worldSize = 9;
+		int worldSize = 8;
 		int worldHeight = 7;
 		bool updateRequired = true;
 		std::vector<Chunk*> activeList;
@@ -413,8 +430,8 @@ namespace blok {
 		Generate terrian using diamond square algorithm
 		*/
 		void generateTerrain() {
-			int n = static_cast<int>(ceilf(log2f(worldSize * worldSize)));
-			int mapSize = pow(2, n) + 1;
+			float n = ceilf(log2f(static_cast<float>(worldSize * worldSize)));
+			int mapSize = static_cast<int>(powf(2.0f, n) + 1.0f);
 			HeightMap heightMap(mapSize);
 			heightMap.generate();
 
@@ -428,7 +445,7 @@ namespace blok {
 						for (int z = 0; z < Chunk::CHUNK_SIZE; z++) {
 							for (int x = 0; x < Chunk::CHUNK_SIZE; x++) {
 								double yscale = heightMap.get(cx*Chunk::CHUNK_SIZE + x, cz * Chunk::CHUNK_SIZE + z);
-								int maxY = clamp(terrainHeight * yscale, -terrainHeight, terrainHeight) + terrainHeight + minTerrainHeight;
+								int maxY = clamp(static_cast<int>(yscale * terrainHeight), -terrainHeight, terrainHeight) + terrainHeight + minTerrainHeight;
 								int minCy = maxY / Chunk::CHUNK_SIZE;
 								int startY = 0; //default to setting whole chunk to air
 								if (cy == minCy) {
@@ -458,6 +475,13 @@ namespace blok {
 				return nullptr;
 			}
 			return activeList[index];
+		}
+
+		Chunk* getChunk(float x, float y, float z) {
+			return getChunk(static_cast<int>(x)
+				,static_cast<int>(y)
+				,static_cast<int>(z)
+			);
 		}
 
 		int clamp(int val, int min, int max) {

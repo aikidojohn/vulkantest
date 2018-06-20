@@ -95,7 +95,7 @@ namespace blok {
 		Player& player;
 		World& world;
 		glm::vec3 cameraPosSkybox = glm::vec3(0.0f, 0.0f, 0.0f);
-		glm::vec3 cameraPos = glm::vec3(0.0f, 1.0f, 2.0f);
+		glm::vec3 cameraPos = glm::vec3(0.0f, 120.0f, 2.0f);
 		glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 		glm::vec3 playerFront = glm::vec3(0.0f, 0.0f, -1.0f);
 		glm::vec3 playerPos;
@@ -187,7 +187,7 @@ namespace blok {
 					//Downward Y collision correction
 					float playerDeltaY = playerPos.y - (block->y + Block::CUBE_SIZE);
 					if ((isInAir || isJumping) && playerDeltaY < 0.0f) {
-						std::cout << "Player y Pos: " << playerPos.y << " < " << block->y + Block::CUBE_SIZE << " delta : " << playerDeltaY << std::endl;
+						//std::cout << "Player y Pos: " << playerPos.y << " < " << block->y + Block::CUBE_SIZE << " delta : " << playerDeltaY << std::endl;
 						direction.y = 0.0f;
 						playerPos.y = block->y + Block::CUBE_SIZE;
 						cameraPos.y = playerPos.y + Block::CUBE_SIZE;
@@ -205,7 +205,7 @@ namespace blok {
 					check the magnitude of the x and z components. The larger magnitued is the axis the player is aligned with.
 					*/
 					if (direction.x != 0 || direction.y != 0 || direction.z != 0) {
-						std::cout << "Player Pos: " << glm::to_string(playerPos) << " block: " << glm::to_string(glm::vec3(block->x, block->y, block->z)) << " direction: " << glm::to_string(direction) << " facing: " << glm::to_string(playerFront) << std::endl;
+						//std::cout << "Player Pos: " << glm::to_string(playerPos) << " block: " << glm::to_string(glm::vec3(block->x, block->y, block->z)) << " direction: " << glm::to_string(direction) << " facing: " << glm::to_string(playerFront) << std::endl;
 
 						//Line-Plane intersection equation https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
 						//This will give a point on the block face to move the player to.
@@ -219,7 +219,7 @@ namespace blok {
 							//playerPos.z = playerPos.z + posDelta.z;
 							cameraPos.x = playerPos.x;
 							//cameraPos.z = playerPos.z;
-							std::cout << "New Player Pos: " << glm::to_string(playerPos) << std::endl;
+							//std::cout << "New Player Pos: " << glm::to_string(playerPos) << std::endl;
 						}
 						else {
 							if (abs(posDelta.x) < Block::CUBE_SIZE && abs(posDelta.y) < Block::CUBE_SIZE && abs(posDelta.z) < Block::CUBE_SIZE) { //Prevent teleporation Kyle! (why does this happen?)
@@ -227,7 +227,7 @@ namespace blok {
 								playerPos.z = playerPos.z + posDelta.z;
 								cameraPos.x = playerPos.x;
 								cameraPos.z = playerPos.z;
-								std::cout << "New Player Pos: " << glm::to_string(playerPos) << std::endl;
+								//std::cout << "New Player Pos: " << glm::to_string(playerPos) << std::endl;
 							}
 						}
 					}
