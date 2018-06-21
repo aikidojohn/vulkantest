@@ -89,6 +89,7 @@ namespace blok {
 
 		void setFlying(bool flightMode) {
 			this->flightMode = flightMode;
+			this->isInAir = !flightMode;
 		}
 
 	private:
@@ -186,7 +187,7 @@ namespace blok {
 
 					//Downward Y collision correction
 					float playerDeltaY = playerPos.y - (block->y + Block::CUBE_SIZE);
-					if ((isInAir || isJumping) && playerDeltaY < 0.0f) {
+					if ((isInAir || isJumping || (direction.y < 0.0f && flightMode)) && playerDeltaY < 0.0f) {
 						//std::cout << "Player y Pos: " << playerPos.y << " < " << block->y + Block::CUBE_SIZE << " delta : " << playerDeltaY << std::endl;
 						direction.y = 0.0f;
 						playerPos.y = block->y + Block::CUBE_SIZE;
@@ -242,7 +243,7 @@ namespace blok {
 				}
 			}
 			else {
-				if (!isInAir && !flightMode) {
+				if (!isInAir) {
 					isInAir = true;
 					flightTime = 0;
 					direction.y = -1.0f;
