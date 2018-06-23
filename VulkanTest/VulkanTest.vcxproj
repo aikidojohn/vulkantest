@@ -162,6 +162,7 @@
     <ClInclude Include="ChunkManager.h" />
     <ClInclude Include="Entity.h" />
     <ClInclude Include="Floats.h" />
+    <ClInclude Include="Font.h" />
     <ClInclude Include="GraphicsContext.h" />
     <ClInclude Include="MemoryManager.h" />
     <ClInclude Include="Model.h" />

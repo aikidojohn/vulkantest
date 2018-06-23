@@ -50,5 +50,8 @@
     <ClInclude Include="Floats.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Font.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
