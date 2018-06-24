@@ -70,6 +70,7 @@ namespace blok {
 		VkDevice device;
 		VkQueue graphicsQueue;
 		VkQueue presentQueue;
+		QueueFamilyIndices indices;
 
 		GraphicsContext(std::vector<const char*> validationLayers, std::vector<const char*> requestedExtensions, std::vector<const char*> deviceExtensions, GLFWwindow * window)
 			: validationLayers{ validationLayers }, extensions{ requestedExtensions }, deviceExtensions{deviceExtensions}, window {window}, instance(createInstance(validationLayers, requestedExtensions))
@@ -197,6 +198,7 @@ namespace blok {
 			if (physicalDevice == VK_NULL_HANDLE) {
 				throw std::runtime_error("failed to find a suitable GPU!");
 			}
+			indices = findQueueFamilies(physicalDevice);
 		}
 
 		bool isDeviceSuitable(VkPhysicalDevice device) {
@@ -260,8 +262,6 @@ namespace blok {
 		}
 
 		void createLogicalDevice() {
-			QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
-
 			std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 			std::set<int> uniqueQueueFamilies = { indices.graphicsFamily, indices.presentFamily };
 

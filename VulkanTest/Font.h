@@ -4,6 +4,9 @@
 #include <string>
 #include <unordered_map>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 namespace blok {
 	struct CharData {
 		char id;
@@ -16,14 +19,7 @@ namespace blok {
 		float xAdvance;
 	};
 
-	struct FontToken {
-		std::string token;
-		int end;
-	};
-
-	class Font {
-	private:
-		std::unordered_map<char, CharData> cdata;
+	struct FontData {
 		std::string face;
 		float size;
 		float padding;
@@ -32,6 +28,94 @@ namespace blok {
 		float base;
 		float scaleW;
 		float scaleH;
+	};
+
+	struct FontToken {
+		std::string token;
+		int end;
+	};
+
+	class Font {
+	public:
+		FontData getFontData() {
+			return fdata;
+		}
+
+		CharData& operator[] (char key) {
+			return cdata[key];
+		}
+
+		static Font* load(std::string file) {
+
+			std::ifstream ff;
+			ff.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+			std::string line;
+			Font* font = new Font();
+			try {
+				ff.open(file.append(".fnt"));
+				font->atlasFile = file.append(".png");
+				while (std::getline(ff, line)) {
+					FontToken token = nextToken(line, 0);
+					while (token.end > 0) {
+						if (token.token == "face") {
+							token = nextToken(line, token.end);
+							font->fdata.face = token.token.substr(1, token.token.length() - 2);
+						}
+						else if (token.token == "size") {
+							token = nextToken(line, token.end);
+							font->fdata.size = std::stof(token.token);
+						}
+						else if (token.token == "padding") {
+							token = nextToken(line, token.end);
+							size_t commaInd = token.token.find_first_of(',');
+							font->fdata.padding = std::stof(token.token.substr(0, commaInd));
+						}
+						else if (token.token == "spacing") {
+							token = nextToken(line, token.end);
+							size_t commaInd = token.token.find_first_of(',');
+							font->fdata.spacing = std::stof(token.token.substr(0, commaInd));
+						}
+						else if (token.token == "lineHeight") {
+							token = nextToken(line, token.end);
+							font->fdata.lineHeight = std::stof(token.token);
+						}
+						else if (token.token == "base") {
+							token = nextToken(line, token.end);
+							font->fdata.base = std::stof(token.token);
+						}
+						else if (token.token == "scaleW") {
+							token = nextToken(line, token.end);
+							font->fdata.scaleW = std::stof(token.token);
+						}
+						else if (token.token == "scaleH") {
+							token = nextToken(line, token.end);
+							font->fdata.scaleH = std::stof(token.token);
+						}
+						else if (token.token == "char") {
+							CharData cd = parseChar(line, token.end);
+							font->cdata[cd.id] = cd;
+						}
+						token = nextToken(line, token.end);
+					}
+				}
+			}
+			catch (std::ifstream::failure e) {
+				std::cerr << "failed to open file. " << e.what() << " : " << e.code().message() << std::endl;
+			}
+			return font;
+		}
+
+		void copyTextureAtlaas(void* dst) {
+			int channels, width, height;
+			stbi_uc* pixels = stbi_load(atlasFile.c_str(), &width, &height, &channels, STBI_grey);
+			memcpy(dst, pixels, width * height * channels);
+			stbi_image_free(pixels);
+		}
+
+	private:
+		std::unordered_map<char, CharData> cdata;
+		FontData fdata;
+		std::string atlasFile;
 
 		static FontToken nextToken(std::string line, int offset) {
 			if (offset >= line.length()) {
@@ -97,66 +181,5 @@ namespace blok {
 			}
 			return cd;
 		}
-
-	public:
-		static Font* load(std::string file) {
-			std::ifstream ff;
-			ff.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-			std::string line;
-			Font* font = new Font();
-			try {
-				ff.open(file);
-				while (std::getline(ff, line)) {
-					FontToken token = nextToken(line, 0);
-					while (token.end > 0) {
-						if (token.token == "face") {
-							token = nextToken(line, token.end);
-							font->face = token.token.substr(1, token.token.length() - 2);
-						}
-						else if (token.token == "size") {
-							token = nextToken(line, token.end);
-							font->size = std::stof(token.token);
-						}
-						else if (token.token == "padding") {
-							token = nextToken(line, token.end);
-							size_t commaInd = token.token.find_first_of(',');
-							font->padding = std::stof(token.token.substr(0, commaInd));
-						}
-						else if (token.token == "spacing") {
-							token = nextToken(line, token.end);
-							size_t commaInd = token.token.find_first_of(',');
-							font->spacing = std::stof(token.token.substr(0, commaInd));
-						}
-						else if (token.token == "lineHeight") {
-							token = nextToken(line, token.end);
-							font->lineHeight = std::stof(token.token);
-						}
-						else if (token.token == "base") {
-							token = nextToken(line, token.end);
-							font->base = std::stof(token.token);
-						}
-						else if (token.token == "scaleW") {
-							token = nextToken(line, token.end);
-							font->scaleW = std::stof(token.token);
-						}
-						else if (token.token == "scaleH") {
-							token = nextToken(line, token.end);
-							font->scaleH = std::stof(token.token);
-						}
-						else if (token.token == "char") {
-							CharData cd = parseChar(line, token.end);
-							font->cdata[cd.id] = cd;
-						}
-						token = nextToken(line, token.end);
-					}
-				}
-			}
-			catch (std::ifstream::failure e) {
-				std::cerr << "failed to open file. " << e.what() << " : " << e.code().message() << std::endl;
-			}
-			return font;
-		}
-
-		
 	};
 }

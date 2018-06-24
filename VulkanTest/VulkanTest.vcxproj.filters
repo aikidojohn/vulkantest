@@ -53,5 +53,8 @@
     <ClInclude Include="Font.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="VulkanBase.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
