@@ -167,6 +167,7 @@
     <ClInclude Include="MemoryManager.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="TextOverlay.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="VulkanBase.h" />
     <ClInclude Include="World.h" />

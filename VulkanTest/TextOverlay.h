@@ -1,4 +1,6 @@
-#pragma once
+#ifndef blok_text_overlay_h
+#define blok_text_overlay_h
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
@@ -8,6 +10,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/ext.hpp>
+
+#ifndef STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+#endif
 
 #include <iostream>
 #include <fstream>
@@ -20,7 +26,7 @@
 
 namespace blok {
 
-	// Max. number of chars the text overlay buffer can hold
+// Max. number of chars the text overlay buffer can hold
 #define TEXTOVERLAY_MAX_CHAR_COUNT 2048
 
 	class TextOverlay {
@@ -31,7 +37,7 @@ namespace blok {
 			this->frameBuffers.resize(frameBuffers.size());
 			for (uint32_t i = 0; i < framebuffers.size(); i++)
 			{
-				this->frameBuffers[i] = &framebuffers[i];
+				this->frameBuffers.push_back(&framebuffers[i]);
 			}
 			this->queue = queue;
 			this->colorformat = colorformat;
@@ -42,6 +48,7 @@ namespace blok {
 			this->font = Font::load("textures/consolas");
 			prepareResources();
 			createGraphicsPipeline();
+			createRenderPass();
 		}
 
 		~TextOverlay() {
@@ -53,14 +60,96 @@ namespace blok {
 
 			vkDestroyDescriptorPool(context->device, descriptorPool, nullptr);
 			vkDestroyDescriptorSetLayout(context->device, descriptorSetLayout, nullptr);
-
+			vkDestroyPipelineLayout(context->device, pipelineLayout, nullptr);
+			vkDestroyPipeline(context->device, pipeline, nullptr);
+			vkDestroyRenderPass(context->device, renderPass, nullptr);
 			vkDestroyBuffer(context->device, vertexBuffer, nullptr);
 			vkFreeMemory(context->device, vertexBufferMemory, nullptr);
-			vkDestroyBuffer(context->device, stagingBuffer, nullptr);
-			vkFreeMemory(context->device, stagingBufferMemory, nullptr);
 			vkDestroyCommandPool(context->device, commandPool, nullptr);
 		}
 
+		void beginTextUpdate() {
+			vkMapMemory(context->device, vertexBufferMemory, 0, VK_WHOLE_SIZE, 0, (void **)&mapped);
+			numLetters = 0;
+		}
+
+		void endTextUpdate() {
+			vkUnmapMemory(context->device, vertexBufferMemory);
+			mapped = nullptr;
+			updateCommandBuffers();
+		}
+
+		void addText(std::string text, float x, float y)
+		{
+			assert(mapped != nullptr);
+
+			float fbW = (float)framebufferwidth;
+			float fbH = (float)framebufferheight;
+			x = (x / fbW * 2.0f) - 1.0f;
+			y = (y / fbH * 2.0f) - 1.0f;
+
+			// Calculate text width
+			float textWidth = 0;
+			for (auto letter : text)
+			{
+				CharData charData = (*font)[letter];
+				textWidth += charData.xAdvance * (charData.width / framebufferwidth);
+			}
+
+			// Generate a uv mapped quad per char in the new text
+			for (auto letter : text)
+			{
+				CharData charData = (*font)[letter];
+				float x0 = x + charData.xOffset * (charData.width / framebufferwidth);
+				float x1 = x + (charData.xOffset + charData.width) * (charData.width / framebufferwidth);
+				float y0 = y + charData.yOffset * (charData.height / framebufferheight);
+				float y1 = y + (charData.yOffset + charData.height) * (charData.height / framebufferheight);
+
+				mapped->x = x0;
+				mapped->y = y0;
+				mapped->z = charData.x;
+				mapped->w = charData.y;
+				mapped++;
+
+				mapped->x = x1;
+				mapped->y = y0;
+				mapped->z = charData.x + charData.width;
+				mapped->w = charData.y;
+				mapped++;
+
+				mapped->x = x0;
+				mapped->y = y1;
+				mapped->z = charData.x;
+				mapped->w = charData.y + charData.height;
+				mapped++;
+
+				mapped->x = x1;
+				mapped->y = y1;
+				mapped->z = charData.x + charData.width;
+				mapped->w = charData.y + charData.height;
+				mapped++;
+
+				x += charData.xAdvance * (charData.width / framebufferwidth);
+
+				numLetters++;
+			}
+		}
+
+		void submit(VkQueue queue, uint32_t bufferindex)
+		{
+			if (!visible)
+			{
+				return;
+			}
+
+			VkSubmitInfo submitInfo = {};
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; submitInfo.commandBufferCount = 1;
+			submitInfo.pCommandBuffers = &commandBuffers[bufferindex];
+
+			vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+			vkQueueWaitIdle(queue);
+		}
+		
 	private:
 		GraphicsContext* context;
 		VkCommandPool commandPool;
@@ -88,6 +177,9 @@ namespace blok {
 		VkPipeline pipeline;
 
 		Font* font;
+		uint32_t numLetters;
+		glm::vec4* mapped = nullptr;
+		bool visible = true;
 
 		void prepareResources() {
 			createCommandPool();
@@ -124,23 +216,8 @@ namespace blok {
 		}
 
 		void createVertexBuffers() {
-			/* end vertex buffer creation*/
 			VkDeviceSize bufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
-
-			VkBuffer stagingBuffer;
-			VkDeviceMemory stagingBufferMemory;
-			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-			//copy the vertex data into the buffer
-			/*void* data;
-			vkMapMemory(context->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-			memcpy(data, vertices.data(), (size_t)bufferSize);
-			vkUnmapMemory(device, stagingBufferMemory);*/
-
 			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-
-			//copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
 		}
 
 		void loadTexture(Font* font) {
@@ -426,13 +503,24 @@ namespace blok {
 			subpass.pColorAttachments = &colorAttachmentRef;
 			subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
-			VkSubpassDependency dependency = {};
-			dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-			dependency.dstSubpass = 0;
-			dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			dependency.srcAccessMask = 0;
-			dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			
+			VkSubpassDependency dependency[2] = {};
+			dependency[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+			dependency[0].dstSubpass = 0;
+			dependency[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			dependency[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+			dependency[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			dependency[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			dependency[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+			dependency[1].srcSubpass = 0;
+			dependency[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+			dependency[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			dependency[1].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+			dependency[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			dependency[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			dependency[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+			
 
 			std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
 			VkRenderPassCreateInfo renderPassInfo = {};
@@ -441,10 +529,10 @@ namespace blok {
 			renderPassInfo.pAttachments = attachments.data();
 			renderPassInfo.subpassCount = 1;
 			renderPassInfo.pSubpasses = &subpass;
-			renderPassInfo.dependencyCount = 1;
-			renderPassInfo.pDependencies = &dependency;
+			renderPassInfo.dependencyCount = 2;
+			renderPassInfo.pDependencies = dependency;
 
-			if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+			if (vkCreateRenderPass(context->device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
 				throw std::runtime_error("failed to create render pass!");
 			}
 		}
@@ -462,42 +550,56 @@ namespace blok {
 			return shaderModule;
 		}
 
-		void recordCommandBuffers() {
+		void updateCommandBuffers() {
+			VkCommandBufferBeginInfo beginInfo = {};
+			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+			beginInfo.pInheritanceInfo = nullptr; // Optional
+
+			std::array<VkClearValue, 2> clearValues = {};
+			//clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+			//clearValues[1].depthStencil = { 1.0f, 0 };
+			clearValues[1] = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+			
+			VkRenderPassBeginInfo renderPassInfo = {};
+			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			renderPassInfo.renderPass = renderPass;
+			renderPassInfo.renderArea.extent.width = framebufferwidth;
+			renderPassInfo.renderArea.extent.height = framebufferheight;
+			renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+			renderPassInfo.pClearValues = clearValues.data();
+
 			for (size_t i = 0; i < commandBuffers.size(); i++) {
-				VkCommandBufferBeginInfo beginInfo = {};
-				beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-				beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-				beginInfo.pInheritanceInfo = nullptr; // Optional
-
+				renderPassInfo.framebuffer = *frameBuffers[i];
 				vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
-
-				//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.object, 0, nullptr);
-
-				VkRenderPassBeginInfo renderPassInfo = {};
-				renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-				renderPassInfo.renderPass = renderPass;
-				renderPassInfo.framebuffer = swapChainFramebuffers[i];
-				renderPassInfo.renderArea.offset = { 0, 0 };
-				renderPassInfo.renderArea.extent = swapChainExtent;
-
-				std::array<VkClearValue, 2> clearValues = {};
-				clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-				clearValues[1].depthStencil = { 1.0f, 0 };
-
-				renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-				renderPassInfo.pClearValues = clearValues.data();
-
 				vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-				//Draw the world!
-				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.object, 0, nullptr);
-				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.object);
-				VkBuffer vertexBuffers[] = { vertexBuffer };
-				VkDeviceSize offsets[] = { 0 };
-				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-				vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+				VkViewport viewport = {};
+				viewport.x = 0.0f;
+				viewport.y = 0.0f;
+				viewport.width = (float)framebufferwidth;
+				viewport.height = (float)framebufferheight;
+				viewport.minDepth = 0.0f;
+				viewport.maxDepth = 1.0f;
+				vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
 
-				vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(world.getMesh()->indices.size()), 1, 0, 0, 0);
+				VkRect2D scissor = {};
+				scissor.offset = { 0, 0 };
+				scissor.extent.width = framebufferwidth;
+				scissor.extent.height = framebufferheight;
+				vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
+
+				//Draw the text!
+				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+				VkDeviceSize offsets =  0;
+				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer, &offsets);
+				vkCmdBindVertexBuffers(commandBuffers[i], 1, 1, &vertexBuffer, &offsets);
+
+				for (uint32_t j = 0; j < numLetters; j++) {
+					vkCmdDraw(commandBuffers[i], 4, 1, j * 4, 0);
+				}
 				//End Draw world
 
 				vkCmdEndRenderPass(commandBuffers[i]);
@@ -888,3 +990,5 @@ namespace blok {
 
 	};
 }
+
+#endif // blok_text_overlay_h

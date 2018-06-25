@@ -1,11 +1,14 @@
-#pragma once
+#ifndef blok_font_h
+#define blok_font_h
+
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <unordered_map>
 
-#define STB_IMAGE_IMPLEMENTATION
+#ifndef STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#endif
 
 namespace blok {
 	struct CharData {
@@ -52,7 +55,8 @@ namespace blok {
 			std::string line;
 			Font* font = new Font();
 			try {
-				ff.open(file.append(".fnt"));
+				std::string fnt = file;
+				ff.open(fnt.append(".fnt"));
 				font->atlasFile = file.append(".png");
 				while (std::getline(ff, line)) {
 					FontToken token = nextToken(line, 0);
@@ -183,3 +187,5 @@ namespace blok {
 		}
 	};
 }
+
+#endif //blok_font_h
