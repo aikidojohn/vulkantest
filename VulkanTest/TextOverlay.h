@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <vector>
 
+#include "lodepng.h"
 #include "GraphicsContext.h"
 #include "Font.h"
 
@@ -47,8 +48,8 @@ namespace blok {
 			//TODO abstract the font and text into another class. This class should handel a vector of text objects each with it's own font and position
 			this->font = Font::load("textures/consolas");
 			prepareResources();
-			createGraphicsPipeline();
 			createRenderPass();
+			createGraphicsPipeline();
 		}
 
 		~TextOverlay() {
@@ -100,10 +101,15 @@ namespace blok {
 			for (auto letter : text)
 			{
 				CharData charData = (*font)[letter];
-				float x0 = x + charData.xOffset * (charData.width / framebufferwidth);
+				/*float x0 = x + charData.xOffset * (charData.width / framebufferwidth);
 				float x1 = x + (charData.xOffset + charData.width) * (charData.width / framebufferwidth);
 				float y0 = y + charData.yOffset * (charData.height / framebufferheight);
-				float y1 = y + (charData.yOffset + charData.height) * (charData.height / framebufferheight);
+				float y1 = y + (charData.yOffset + charData.height) * (charData.height / framebufferheight);*/
+
+				float x0 = x + 0.25f;
+				float x1 = x + 0.5f;
+				float y0 = y + 0.25f;
+				float y1 = y + 0.5f;
 
 				mapped->x = x0;
 				mapped->y = y0;
@@ -217,7 +223,7 @@ namespace blok {
 
 		void createVertexBuffers() {
 			VkDeviceSize bufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
-			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexBuffer, vertexBufferMemory);
 		}
 
 		void loadTexture(Font* font) {
@@ -226,13 +232,17 @@ namespace blok {
 
 			FontData fdata = font->getFontData();
 			int mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(fdata.scaleW, fdata.scaleH)))) + 1;
-			VkDeviceSize imageSize = fdata.scaleW * fdata.scaleH;
+			VkDeviceSize imageSize = fdata.scaleW * fdata.scaleH * 4;
 
 			createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
 			void* data;
 			vkMapMemory(context->device, stagingBufferMemory, 0, imageSize, 0, &data);
-			font->copyTextureAtlaas(data);
+			//font->copyTextureAtlaas(data);
+			unsigned int channels, width, height;
+			std::vector<unsigned char> pixels;
+			auto error = lodepng::decode(pixels, width, height, "textures/consolas.png");
+			memcpy(data, pixels.data(), width * height * 4);
 			vkUnmapMemory(context->device, stagingBufferMemory);
 
 			createImage(fdata.scaleW, fdata.scaleH, mipLevels, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, imageMemory);
@@ -321,8 +331,8 @@ namespace blok {
 		}
 
 		void createGraphicsPipeline() {
-			auto vertShaderCode = readFile("shaders/vert.spv");
-			auto fragShaderCode = readFile("shaders/frag.spv");
+			auto vertShaderCode = readFile("shaders/text.vert.spv");
+			auto fragShaderCode = readFile("shaders/text.frag.spv");
 			VkShaderModule vertShaderModule;
 			VkShaderModule fragShaderModule;
 			vertShaderModule = createShaderModule(vertShaderCode);
@@ -348,7 +358,7 @@ namespace blok {
 
 			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
 			attributeDescriptions[0] = {0, 0, VK_FORMAT_R32G32_SFLOAT, 0};
-			attributeDescriptions[0] = {1, 1, VK_FORMAT_R32G32_SFLOAT, sizeof(glm::vec2)};
+			attributeDescriptions[1] = {1, 1, VK_FORMAT_R32G32_SFLOAT, sizeof(glm::vec2)};
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -391,7 +401,7 @@ namespace blok {
 													//multisampling can be used for anti-aliasing. Disabled for this tutorial
 			VkPipelineMultisampleStateCreateInfo multisampling = {};
 			multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-			multisampling.sampleShadingEnable = VK_TRUE; //enable multisampling?
+			multisampling.sampleShadingEnable = VK_FALSE; //enable multisampling?
 			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 			multisampling.minSampleShading = 1.0f; // Optional
 			multisampling.pSampleMask = nullptr; // Optional

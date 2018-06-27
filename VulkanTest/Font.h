@@ -40,6 +40,7 @@ namespace blok {
 
 	class Font {
 	public:
+		std::string atlasFile;
 		FontData getFontData() {
 			return fdata;
 		}
@@ -109,9 +110,10 @@ namespace blok {
 			return font;
 		}
 
-		void copyTextureAtlaas(void* dst) {
+		inline void copyTextureAtlaas(void* dst) {
 			int channels, width, height;
-			stbi_uc* pixels = stbi_load(atlasFile.c_str(), &width, &height, &channels, STBI_grey);
+			stbi_uc* pixels = stbi_load(atlasFile.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+			const char* err = stbi_failure_reason();
 			memcpy(dst, pixels, width * height * channels);
 			stbi_image_free(pixels);
 		}
@@ -119,7 +121,7 @@ namespace blok {
 	private:
 		std::unordered_map<char, CharData> cdata;
 		FontData fdata;
-		std::string atlasFile;
+		
 
 		static FontToken nextToken(std::string line, int offset) {
 			if (offset >= line.length()) {
