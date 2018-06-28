@@ -80,11 +80,13 @@ namespace blok {
 			updateCommandBuffers();
 		}
 
-		void addText(std::string text, float x, float y)
+		void addText(std::string text, float x, float y, float pt)
 		{
 			assert(mapped != nullptr);
 
 			FontData fd = font->getFontData();
+
+			float ptScale = pt / fd.size;
 
 			float fbW = (float)framebufferwidth;
 			float fbH = (float)framebufferheight;
@@ -93,25 +95,20 @@ namespace blok {
 
 			// Calculate text width
 			float textWidth = 0;
-			for (auto letter : text)
-			{
+			for (auto letter : text) {
 				CharData charData = (*font)[letter];
-				textWidth += charData.xAdvance * (charData.width / framebufferwidth);
+				textWidth += charData.xAdvance * (charData.width * ptScale / fd.scaleW);
 			}
 
 			// Generate a uv mapped quad per char in the new text
+			float lineNumber = 0;
 			for (auto letter : text)
 			{
 				CharData charData = (*font)[letter];
 				float x0 = x + (charData.xOffset / fd.scaleW);
-				float x1 = x + (charData.xOffset + charData.width) / fd.scaleW;
+				float x1 = x + (charData.xOffset + charData.width * ptScale) / fd.scaleW;
 				float y0 = y + (charData.yOffset / fd.scaleH);
-				float y1 = y + (charData.yOffset + charData.height) / fd.scaleH;
-
-				/*float x0 = x + 0.25f;
-				float x1 = x + 0.75f;
-				float y0 = y + 0.25f;
-				float y1 = y + 0.75f;*/
+				float y1 = y + (charData.yOffset + charData.height * ptScale) / fd.scaleH;
 
 				mapped->x = x0;
 				mapped->y = y0;
@@ -137,7 +134,7 @@ namespace blok {
 				mapped->w = (charData.y + charData.height) / fd.scaleH;
 				mapped++;
 
-				x += (charData.xAdvance / fd.scaleW);
+				x += (charData.xAdvance * ptScale / fd.scaleW);
 
 				numLetters++;
 			}
@@ -240,11 +237,7 @@ namespace blok {
 
 			void* data;
 			vkMapMemory(context->device, stagingBufferMemory, 0, imageSize, 0, &data);
-			//font->copyTextureAtlaas(data);
-			unsigned int channels, width, height;
-			std::vector<unsigned char> pixels;
-			auto error = lodepng::decode(pixels, width, height, "textures/consolas1.png");
-			memcpy(data, pixels.data(), width * height * 4);
+			font->copyTextureAtlaas(data);
 			vkUnmapMemory(context->device, stagingBufferMemory);
 
 			createImage(fdata.scaleW, fdata.scaleH, mipLevels, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, imageMemory);
