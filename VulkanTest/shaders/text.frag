@@ -7,6 +7,7 @@ layout (binding = 0) uniform sampler2D samplerFont;
 layout (location = 0) out vec4 outFragColor;
 
 void main(void) {
-	float color = texture(samplerFont, inUV).r;
-	outFragColor = vec4(color);
+	// float color = texture(samplerFont, inUV).r;
+	//outFragColor = vec4(color);
+    outFragColor = texture(samplerFont, inUV);
 }

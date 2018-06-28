@@ -84,6 +84,8 @@ namespace blok {
 		{
 			assert(mapped != nullptr);
 
+			FontData fd = font->getFontData();
+
 			float fbW = (float)framebufferwidth;
 			float fbH = (float)framebufferheight;
 			x = (x / fbW * 2.0f) - 1.0f;
@@ -101,41 +103,41 @@ namespace blok {
 			for (auto letter : text)
 			{
 				CharData charData = (*font)[letter];
-				/*float x0 = x + charData.xOffset * (charData.width / framebufferwidth);
-				float x1 = x + (charData.xOffset + charData.width) * (charData.width / framebufferwidth);
-				float y0 = y + charData.yOffset * (charData.height / framebufferheight);
-				float y1 = y + (charData.yOffset + charData.height) * (charData.height / framebufferheight);*/
+				float x0 = x + (charData.xOffset / fd.scaleW);
+				float x1 = x + (charData.xOffset + charData.width) / fd.scaleW;
+				float y0 = y + (charData.yOffset / fd.scaleH);
+				float y1 = y + (charData.yOffset + charData.height) / fd.scaleH;
 
-				float x0 = x + 0.25f;
-				float x1 = x + 0.5f;
+				/*float x0 = x + 0.25f;
+				float x1 = x + 0.75f;
 				float y0 = y + 0.25f;
-				float y1 = y + 0.5f;
+				float y1 = y + 0.75f;*/
 
 				mapped->x = x0;
 				mapped->y = y0;
-				mapped->z = charData.x;
-				mapped->w = charData.y;
+				mapped->z = charData.x / fd.scaleW ;
+				mapped->w = charData.y /fd.scaleH;
 				mapped++;
 
 				mapped->x = x1;
 				mapped->y = y0;
-				mapped->z = charData.x + charData.width;
-				mapped->w = charData.y;
+				mapped->z = (charData.x + charData.width) / fd.scaleW;
+				mapped->w = charData.y /fd.scaleH;
 				mapped++;
 
 				mapped->x = x0;
 				mapped->y = y1;
-				mapped->z = charData.x;
-				mapped->w = charData.y + charData.height;
+				mapped->z = charData.x / fd.scaleW;
+				mapped->w = (charData.y + charData.height) / fd.scaleH;
 				mapped++;
 
 				mapped->x = x1;
 				mapped->y = y1;
-				mapped->z = charData.x + charData.width;
-				mapped->w = charData.y + charData.height;
+				mapped->z = (charData.x + charData.width) / fd.scaleW;
+				mapped->w = (charData.y + charData.height) / fd.scaleH;
 				mapped++;
 
-				x += charData.xAdvance * (charData.width / framebufferwidth);
+				x += (charData.xAdvance / fd.scaleW);
 
 				numLetters++;
 			}
@@ -241,7 +243,7 @@ namespace blok {
 			//font->copyTextureAtlaas(data);
 			unsigned int channels, width, height;
 			std::vector<unsigned char> pixels;
-			auto error = lodepng::decode(pixels, width, height, "textures/consolas.png");
+			auto error = lodepng::decode(pixels, width, height, "textures/consolas1.png");
 			memcpy(data, pixels.data(), width * height * 4);
 			vkUnmapMemory(context->device, stagingBufferMemory);
 
