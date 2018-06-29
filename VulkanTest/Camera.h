@@ -29,7 +29,8 @@ namespace blok {
 			cameraPos.x = p.x;
 			cameraPos.y = p.y + 1;
 			cameraPos.z = p.z;
-			playerPos = { p.x, p.y, p.z };
+			//playerPos = { p.x, p.y, p.z };
+			player.setFront(glm::vec3(0.0f, 0.0f, -1.0f));
 			
 		}
 
@@ -45,8 +46,8 @@ namespace blok {
 			cameraPos = other.cameraPos;
 			cameraFront = other.cameraFront;
 			cameraUp = other.cameraUp;
-			playerPos = other.playerPos;
-			playerFront = other.playerFront;
+			//playerPos = other.playerPos;
+			//playerFront = other.playerFront;
 			yaw = other.yaw;
 			pitch = other.pitch;
 			return *this;
@@ -98,8 +99,8 @@ namespace blok {
 		glm::vec3 cameraPosSkybox = glm::vec3(0.0f, 0.0f, 0.0f);
 		glm::vec3 cameraPos = glm::vec3(0.0f, 120.0f, 2.0f);
 		glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-		glm::vec3 playerFront = glm::vec3(0.0f, 0.0f, -1.0f);
-		glm::vec3 playerPos;
+		//glm::vec3 playerFront = glm::vec3(0.0f, 0.0f, -1.0f);
+		//glm::vec3 playerPos;
 		glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 		float yaw = -90;
 		float pitch = 0;
@@ -124,20 +125,20 @@ namespace blok {
 			front.y = sin(glm::radians(pitch));
 			front.z = playerf.z * cos(glm::radians(pitch));
 			cameraFront = glm::normalize(front);
-			playerFront = glm::normalize(playerf);
+			player.setFront(glm::normalize(playerf));
 			//std::cout << glm::to_string(cameraFront) << std::endl;
 		}
 
 		void updateCamera(float dx, float dy, float dz) {
 			float previousY = cameraPos.y;
 			//movenent in the z plane
-			cameraPos += dz * playerFront;
+			cameraPos += dz * player.getFront();
 			//movement in the x plane. cross creates a perpendicular vector to up and front
-			cameraPos += glm::normalize(glm::cross(playerFront, cameraUp)) * dx;
+			cameraPos += glm::normalize(glm::cross(player.getFront(), cameraUp)) * dx;
 			//movement in the y plane. Simply add the delta y to the y component.
 			cameraPos.y = previousY + dy;
 
-			playerPos = { cameraPos.x, cameraPos.y - 1, cameraPos.z };
+			player.setPosition({ cameraPos.x, cameraPos.y - 1, cameraPos.z });
 		}
 
 		glm::vec3 getCorrection(std::optional<Block> block, glm::vec3 pos, glm::vec3 dv) {
@@ -178,6 +179,7 @@ namespace blok {
 			updateCamera(dx, dy, dz);
 
 			//Collision Detecton
+			glm::vec3 playerPos = player.getPosition();
 			std::optional<Block> block = world.getBlockAt(playerPos);
 			if (block.has_value()) {
 				//determine if the player is standing on terrain. If the block below the current colliding block has a top y = player y and it is active, player is standing on the block.
@@ -210,8 +212,8 @@ namespace blok {
 
 						//Line-Plane intersection equation https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
 						//This will give a point on the block face to move the player to.
-						glm::vec3  right = normalize(glm::cross(playerFront, cameraUp));
-						glm::vec3 dv = direction.z != 0 ? playerFront * direction.z : right * direction.x;
+						glm::vec3  right = normalize(glm::cross(player.getFront(), cameraUp));
+						glm::vec3 dv = direction.z != 0 ? player.getFront() * direction.z : right * direction.x;
 						glm::vec3 posDelta = getCorrection(block, playerPos, dv);
 						glm::vec3 newPlayerPos = playerPos + posDelta;
 						std::optional<Block> newBlock = world.getBlockAt(newPlayerPos);
@@ -232,6 +234,7 @@ namespace blok {
 							}
 						}
 					}
+					player.setPosition(playerPos);
 					//isInAir = false;
 				}
 				else {

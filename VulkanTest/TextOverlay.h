@@ -46,7 +46,7 @@ namespace blok {
 			this->framebufferheight = framebufferheight;
 			this->framebufferwidth = framebufferwidth;
 			//TODO abstract the font and text into another class. This class should handel a vector of text objects each with it's own font and position
-			this->font = Font::load("textures/consolas");
+			this->font = Font::load("textures/consolasf");
 			prepareResources();
 			createRenderPass();
 			createGraphicsPipeline();
@@ -86,29 +86,30 @@ namespace blok {
 
 			FontData fd = font->getFontData();
 
-			float ptScale = pt / fd.size;
-
 			float fbW = (float)framebufferwidth;
 			float fbH = (float)framebufferheight;
 			x = (x / fbW * 2.0f) - 1.0f;
 			y = (y / fbH * 2.0f) - 1.0f;
+			float originalx = x;
+
+			float ptScale = pt / fd.size;
+			float lineHeight = ptScale * fd.lineHeight / fd.scaleH;
 
 			// Calculate text width
-			float textWidth = 0;
+			/*float textWidth = 0;
 			for (auto letter : text) {
 				CharData charData = (*font)[letter];
 				textWidth += charData.xAdvance * (charData.width * ptScale / fd.scaleW);
-			}
+			}*/
 
 			// Generate a uv mapped quad per char in the new text
-			float lineNumber = 0;
 			for (auto letter : text)
 			{
 				CharData charData = (*font)[letter];
-				float x0 = x + (charData.xOffset / fd.scaleW);
-				float x1 = x + (charData.xOffset + charData.width * ptScale) / fd.scaleW;
-				float y0 = y + (charData.yOffset / fd.scaleH);
-				float y1 = y + (charData.yOffset + charData.height * ptScale) / fd.scaleH;
+				float x0 = x + (charData.xOffset * ptScale / fd.scaleW);
+				float x1 = x + (charData.xOffset + charData.width) * ptScale / fd.scaleW;
+				float y0 = y + (charData.yOffset * ptScale / fd.scaleH);
+				float y1 = y + (charData.yOffset + charData.height) * ptScale / fd.scaleH;
 
 				mapped->x = x0;
 				mapped->y = y0;
@@ -135,6 +136,11 @@ namespace blok {
 				mapped++;
 
 				x += (charData.xAdvance * ptScale / fd.scaleW);
+
+				if (letter == '\n') {
+					x = originalx;
+					y += lineHeight;
+				}
 
 				numLetters++;
 			}

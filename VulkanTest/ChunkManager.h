@@ -411,7 +411,7 @@ namespace blok {
 			float bx = floorf(position.x - xOffset);
 			float by = floorf(position.y - yOffset);
 			float bz = floorf (-(position.z - zOffset));
-			std::cout << "World (" << position.x << ", " << position.y << ", " << position.z << ") -> Chunk(" << cx << ", " << cy << ", " << cz << ") Block(" << bx << ", " << by << ", " << bz << ")" << std::endl;
+			//std::cout << "World (" << position.x << ", " << position.y << ", " << position.z << ") -> Chunk(" << cx << ", " << cy << ", " << cz << ") Block(" << bx << ", " << by << ", " << bz << ")" << std::endl;
 			if (bx < 0 || by < 0 || bz < 0 || bx >= Chunk::CHUNK_SIZE || by >= Chunk::CHUNK_SIZE || bz >= Chunk::CHUNK_SIZE) {
 				return {};
 			}
