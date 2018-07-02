@@ -176,9 +176,229 @@ namespace blok {
 				std::cout << "In Air " << dg << ", " << dp << ", " << dy << std::endl;
 			}
 			//std::cout << glm::to_string(playerFront) << std::endl;
+
+			glm::vec3 lastPosition = player.getPosition();
 			updateCamera(dx, dy, dz);
 
 			//Collision Detecton
+			//correctCollision();
+			correctCollision3(lastPosition);
+		}
+
+		std::optional<glm::vec3> getPlaneIntersection(glm::vec3 p0, glm::vec3 p1, glm::vec3 p2, glm::vec3 lastPosition, glm::vec3 playerPosition) {
+			//Find the point where the vector going from lastPosition to playerPosition intersects the plane defined by the points (p0,p1,p2)
+			glm::vec3 norm = glm::cross(p1 - p0, p2 - p0); // normal vector for the plane
+			glm::vec3 lab = (playerPosition - lastPosition);
+			float t = glm::dot(norm, lastPosition - p0) / glm::dot(-1.0f * lab, norm);
+			glm::vec3 labt = lab * t;
+			glm::vec3 intersect = lastPosition + labt;
+
+			// https://www.lucidar.me/en/mathematics/check-if-a-point-belongs-on-a-line-segment/
+			float kab = glm::dot(lab, lab);
+			float kac = glm::dot(lab, labt);
+			if (kac >= 0 && kac <= kab) {
+				return std::make_optional(intersect);
+			}
+			return {};
+		}
+
+		void correctCollision3(glm::vec3 lastCenter) {
+			BoundingBox boxOffsets = player.getBoundingBox();
+			glm::vec3* offsets = &boxOffsets.p0;
+			glm::vec3 playerCenter = player.getPosition();
+
+			
+			bool onTerrain = false;
+			for (int i = 0; i < 7; i++) {
+				glm::vec3 playerPos = playerCenter + *offsets;
+				glm::vec3 lastPosition = lastCenter + *offsets;
+
+				std::optional<Block> block = world.getBlockAt(playerPos);
+				if (!block.has_value() || !block->isActive()) {
+					//There is no collision. Player is outside of the world.
+					//is player in the air?
+					std::optional<Block> blockBelow = world.getBlockAt(block->x, block->y - 1, block->z);
+					onTerrain |= blockBelow.has_value() && blockBelow->isActive() ? floats::almostEqual(block->y, playerPos.y) : false;
+					continue;
+				}
+
+				//Did we intersect a visible top y plain of a block?
+				std::optional<Block> blockAbove = world.getBlockAt(block->x, block->y + 1, block->z);
+				if (blockAbove.has_value() && !blockAbove->isActive()) {
+					//no block above, so it's visible. Check for intersection.
+					glm::vec3 p0 = { block->x, block->y + 1, block->z };
+					glm::vec3 p1 = { block->x + 1, block->y + 1, block->z };
+					glm::vec3 p2 = { block->x, block->y + 1, block->z - 1 };
+					/*glm::vec3 cross = glm::cross(p1 - p0, p2 - p0);
+					glm::vec3 lab = (playerPos - lastPosition);
+					float t = glm::dot(cross, lastPosition - p0) / glm::dot(-1.0f * lab , cross);
+					glm::vec3 intersect = lastPosition + lab * t;
+					*/
+					std::optional<glm::vec3> intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
+					if (intersect.has_value()) {
+						//We have intersected the top face of the block. Set player position.
+						playerCenter += intersect.value() - playerPos;
+						//cameraPos = { intersect->x, intersect->y + 1, intersect->z };
+						isInAir = false;
+						isJumping = false;
+						direction.y = 0.0f;
+						continue; //Don't need to check anything else? Collided with top face of visible block;
+					}
+				}
+
+				if (floats::almostEqual(playerPos.x, block->x) || floats::almostEqual(playerPos.x, block->x + 1.0f) || floats::almostEqual(playerPos.z, block->z) || floats::almostEqual(playerPos.z, block->z - 1.0f)) {
+					//sliding on wall, return;
+					continue;
+				}
+
+				glm::vec3 p0 = { block->x, block->y, block->z };
+				glm::vec3 p1 = { block->x, block->y + 1, block->z };
+				glm::vec3 p2 = { block->x, block->y, block->z - 1 };
+				std::optional<glm::vec3> intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
+				if (intersect.has_value()) {
+					playerCenter += intersect.value() - playerPos;
+					//cameraPos = { intersect->x, intersect->y + 1, intersect->z };
+					direction.x = 0.0f;
+					continue; //Don't need to check anything else?
+				}
+
+				p0 = { block->x + 1, block->y, block->z };
+				p1 = { block->x + 1, block->y + 1, block->z };
+				p2 = { block->x + 1, block->y, block->z - 1 };
+				intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
+				if (intersect.has_value()) {
+					playerCenter += intersect.value() - playerPos;
+					//cameraPos = { intersect->x, intersect->y + 1, intersect->z };
+					direction.x = 0.0f;
+					continue; //Don't need to check anything else?
+				}
+
+				p0 = { block->x, block->y, block->z };
+				p1 = { block->x, block->y + 1, block->z };
+				p2 = { block->x + 1, block->y, block->z };
+				intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
+				if (intersect.has_value()) {
+					playerCenter += intersect.value() - playerPos;
+					//cameraPos = { intersect->x, intersect->y + 1, intersect->z };
+					direction.x = 0.0f;
+					continue; //Don't need to check anything else?
+				}
+
+				p0 = { block->x, block->y, block->z - 1 };
+				p1 = { block->x, block->y + 1, block->z - 1 };
+				p2 = { block->x + 1, block->y, block->z - 1 };
+				intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
+				if (intersect.has_value()) {
+					playerCenter += intersect.value() - playerPos;
+					//cameraPos = { intersect->x, intersect->y + 1, intersect->z };
+					direction.x = 0.0f;
+					continue; //Don't need to check anything else?
+				}
+
+				offsets++;
+			}
+
+			if (!isInAir && !onTerrain) {
+				isInAir = true;
+				flightTime = 0;
+				direction.y = -1.0f;
+			}
+
+			player.setPosition(playerCenter);
+			cameraPos = { playerCenter.x, playerCenter.y + 1, playerCenter.z };
+		}
+
+		void correctCollision2(glm::vec3 lastPosition) {
+			glm::vec3 playerPos = player.getPosition();
+			std::optional<Block> block = world.getBlockAt(playerPos);
+			if (!block.has_value() || !block->isActive()) {
+				//There is no collision. Player is outside of the world.
+				//is player in the air?
+				std::optional<Block> blockBelow = world.getBlockAt(block->x, block->y - 1, block->z);
+				bool onTerrain = blockBelow.has_value() && blockBelow->isActive() ? floats::almostEqual(block->y, playerPos.y) : false;
+				if (!isInAir && !onTerrain) {
+					isInAir = true;
+					flightTime = 0;
+					direction.y = -1.0f;
+				}
+				return;
+			}
+
+			//Did we intersect a visible top y plain of a block?
+			std::optional<Block> blockAbove = world.getBlockAt(block->x, block->y + 1, block->z);
+			if (blockAbove.has_value() && !blockAbove->isActive()) {
+				//no block above, so it's visible. Check for intersection.
+				glm::vec3 p0 = { block->x, block->y + 1, block->z };
+				glm::vec3 p1 = { block->x + 1, block->y + 1, block->z };
+				glm::vec3 p2 = { block->x, block->y + 1, block->z - 1 };
+				/*glm::vec3 cross = glm::cross(p1 - p0, p2 - p0);
+				glm::vec3 lab = (playerPos - lastPosition);
+				float t = glm::dot(cross, lastPosition - p0) / glm::dot(-1.0f * lab , cross);
+				glm::vec3 intersect = lastPosition + lab * t;
+				*/
+				std::optional<glm::vec3> intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
+				if (intersect.has_value()) {
+					//We have intersected the top face of the block. Set player position.
+					player.setPosition(intersect.value());
+					cameraPos = { intersect->x, intersect->y + 1, intersect->z };
+					isInAir = false;
+					isJumping = false;
+					direction.y = 0.0f;
+					return; //Don't need to check anything else? Collided with top face of visible block;
+				}
+			}
+
+			if (floats::almostEqual(playerPos.x, block->x) || floats::almostEqual(playerPos.x, block->x + 1.0f) || floats::almostEqual(playerPos.z, block->z) || floats::almostEqual(playerPos.z, block->z - 1.0f)) {
+				//sliding on wall, return;
+				return;
+			}
+
+			glm::vec3 p0 = { block->x, block->y, block->z };
+			glm::vec3 p1 = { block->x, block->y + 1, block->z };
+			glm::vec3 p2 = { block->x, block->y, block->z - 1 };
+			std::optional<glm::vec3> intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
+			if (intersect.has_value()) {
+				player.setPosition(intersect.value());
+				cameraPos = { intersect->x, intersect->y + 1, intersect->z };
+				direction.x = 0.0f;
+				return; //Don't need to check anything else?
+			}
+
+			p0 = { block->x + 1, block->y, block->z };
+			p1 = { block->x + 1, block->y + 1, block->z };
+			p2 = { block->x + 1, block->y, block->z - 1 };
+			intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
+			if (intersect.has_value()) {
+				player.setPosition(intersect.value());
+				cameraPos = { intersect->x, intersect->y + 1, intersect->z };
+				direction.x = 0.0f;
+				return; //Don't need to check anything else?
+			}
+
+			p0 = { block->x, block->y, block->z };
+			p1 = { block->x, block->y + 1, block->z };
+			p2 = { block->x + 1, block->y, block->z };
+			intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
+			if (intersect.has_value()) {
+				player.setPosition(intersect.value());
+				cameraPos = { intersect->x, intersect->y + 1, intersect->z };
+				direction.x = 0.0f;
+				return; //Don't need to check anything else?
+			}
+
+			p0 = { block->x, block->y, block->z -1 };
+			p1 = { block->x, block->y + 1, block->z -1 };
+			p2 = { block->x + 1, block->y, block->z - 1 };
+			intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
+			if (intersect.has_value()) {
+				player.setPosition(intersect.value());
+				cameraPos = { intersect->x, intersect->y + 1, intersect->z };
+				direction.x = 0.0f;
+				return; //Don't need to check anything else?
+			}
+		}
+
+		void correctCollision() {
 			glm::vec3 playerPos = player.getPosition();
 			std::optional<Block> block = world.getBlockAt(playerPos);
 			if (block.has_value()) {
@@ -203,7 +423,7 @@ namespace blok {
 					/*
 					The playerFront is a unit vector representing the direction the player is facing. If we imagine taking the dot product
 					of the player facing and each cube face normal, we will have a measure of how similar the two directions are. Since the normals are
-					unit vectors with a single "1" value for an axis, the dot product is the same as looking at just the individual components of the player normal 
+					unit vectors with a single "1" value for an axis, the dot product is the same as looking at just the individual components of the player normal
 					(the dot product will just zero out the other components). So to figure out if the player is facing mostly in the x or z position,
 					check the magnitude of the x and z components. The larger magnitued is the axis the player is aligned with.
 					*/

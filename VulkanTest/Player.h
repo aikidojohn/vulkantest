@@ -24,6 +24,20 @@ namespace blok {
 		glm::vec3 getPosition() {
 			return position;
 		}
+
+		BoundingBox getBoundingBox() {
+			return {
+				{-0.45f, 0.0f, -0.45f},
+				{0.45f, 0.0f, -0.45f},
+				{-0.45f, 0.0f, 0.45f},
+				{0.45f, 0.0f, 0.45f},
+				{-0.45f, 1.9, -0.45f},
+				{0.45f, 1.9, -0.45f},
+				{-0.45f, 1.9, 0.45f},
+				{+0.45f, 1.9, 0.45f},
+
+			};
+		}
 		
 		glm::vec3 getFront() {
 			return front;
