@@ -27,14 +27,14 @@ namespace blok {
 
 		BoundingBox getBoundingBox() {
 			return {
-				{-0.45f, 0.0f, -0.45f},
-				{0.45f, 0.0f, -0.45f},
-				{-0.45f, 0.0f, 0.45f},
-				{0.45f, 0.0f, 0.45f},
-				{-0.45f, 1.9, -0.45f},
-				{0.45f, 1.9, -0.45f},
-				{-0.45f, 1.9, 0.45f},
-				{+0.45f, 1.9, 0.45f},
+				{-width, 0.0f, -width},
+				{width, 0.0f, -width },
+				{-width, 0.0f, width },
+				{ width, 0.0f, width },
+				{-width, height, -width },
+				{ width, height, -width },
+				{-width, height, width },
+				{width, height, width },
 
 			};
 		}
@@ -55,6 +55,8 @@ namespace blok {
 		glm::vec3 position;
 		glm::vec3 front;
 		World& world;
+		float width = 0.25f;
+		float height = 1.9f;
 	};
 }
 #endif // !blok_player_h

@@ -209,7 +209,7 @@ namespace blok {
 
 			
 			bool onTerrain = false;
-			for (int i = 0; i < 7; i++) {
+			for (int i = 0; i < 7; i++, offsets++) {
 				glm::vec3 playerPos = playerCenter + *offsets;
 				glm::vec3 lastPosition = lastCenter + *offsets;
 
@@ -236,6 +236,7 @@ namespace blok {
 					*/
 					std::optional<glm::vec3> intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
 					if (intersect.has_value()) {
+						std::cout << "y intersect " << glm::to_string(intersect.value()) << std::endl;
 						//We have intersected the top face of the block. Set player position.
 						playerCenter += intersect.value() - playerPos;
 						//cameraPos = { intersect->x, intersect->y + 1, intersect->z };
@@ -256,6 +257,7 @@ namespace blok {
 				glm::vec3 p2 = { block->x, block->y, block->z - 1 };
 				std::optional<glm::vec3> intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
 				if (intersect.has_value()) {
+					std::cout << "z, x intersect " << glm::to_string(intersect.value()) << std::endl;
 					playerCenter += intersect.value() - playerPos;
 					//cameraPos = { intersect->x, intersect->y + 1, intersect->z };
 					direction.x = 0.0f;
@@ -267,6 +269,7 @@ namespace blok {
 				p2 = { block->x + 1, block->y, block->z - 1 };
 				intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
 				if (intersect.has_value()) {
+					std::cout << "z, x+1 intersect " << glm::to_string(intersect.value()) << std::endl;
 					playerCenter += intersect.value() - playerPos;
 					//cameraPos = { intersect->x, intersect->y + 1, intersect->z };
 					direction.x = 0.0f;
@@ -278,6 +281,7 @@ namespace blok {
 				p2 = { block->x + 1, block->y, block->z };
 				intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
 				if (intersect.has_value()) {
+					std::cout << "x, z intersect " << glm::to_string(intersect.value()) << std::endl;
 					playerCenter += intersect.value() - playerPos;
 					//cameraPos = { intersect->x, intersect->y + 1, intersect->z };
 					direction.x = 0.0f;
@@ -289,13 +293,12 @@ namespace blok {
 				p2 = { block->x + 1, block->y, block->z - 1 };
 				intersect = getPlaneIntersection(p0, p1, p2, lastPosition, playerPos);
 				if (intersect.has_value()) {
+					std::cout << "x, z-1 intersect " << glm::to_string(intersect.value()) << std::endl;
 					playerCenter += intersect.value() - playerPos;
 					//cameraPos = { intersect->x, intersect->y + 1, intersect->z };
 					direction.x = 0.0f;
 					continue; //Don't need to check anything else?
 				}
-
-				offsets++;
 			}
 
 			if (!isInAir && !onTerrain) {
