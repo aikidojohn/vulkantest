@@ -129,7 +129,8 @@ namespace blok {
 
 			//create instance
 			VkInstance instance;
-			if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+			VkResult res = vkCreateInstance(&createInfo, nullptr, &instance);
+			if (res != VK_SUCCESS) {
 				throw std::runtime_error("failed to create instance!");
 			}
 
